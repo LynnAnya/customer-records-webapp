@@ -221,3 +221,6 @@ __marimo__/
 
 # Tailwind standalone program (downloaded per machine, see CLAUDE.md)
 /bin/
+
+# Working notes for the AI assistant (kept local, not published)
+CLAUDE.md

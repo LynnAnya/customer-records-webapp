@@ -1,0 +1,143 @@
+{% extends "base.html" %}
+{% load customer_format %}
+
+{% block title %}ลูกค้า{% endblock %}
+
+{% block content %}
+<h1 class="text-3xl font-bold leading-snug">สวัสดี {{ request.user.first_name|default:request.user.username }}</h1>
+
+{# Search and sort. HTMX swaps only the table; without JavaScript the form still works. #}
+<form id="customer-filters" method="get" action="{% url 'customer_list' %}"
+      hx-get="{% url 'customer_table' %}" hx-target="#customer-table"
+      hx-trigger="input changed delay:300ms from:#q, search from:#q, change from:#sort, submit"
+      x-data
+      @set-sort.window="$refs.sort.value = $event.detail; $refs.sort.dispatchEvent(new Event('change', { bubbles: true }))"
+      class="mt-6 flex flex-col gap-3 sm:flex-row">
+  <div class="relative flex-1">
+    <label for="q" class="sr-only">ค้นหาลูกค้า</label>
+    <span class="pointer-events-none absolute top-1/2 left-3.5 -translate-y-1/2 text-muted">{% include "components/icon.html" with name="search" %}</span>
+    <input id="q" name="q" type="search" value="{{ query }}" autocomplete="off"
+           placeholder="{% if show_phone %}ค้นหาชื่อ ทะเบียนรถ เบอร์โทร ธนาคาร เลขที่บัญชี ผู้แนะนำ{% else %}ค้นหาชื่อ ทะเบียนรถ ธนาคาร เลขที่บัญชี ผู้แนะนำ{% endif %}"
+           class="control w-full pl-11">
+  </div>
+  <div>
+    <label for="sort" class="sr-only">เรียงตาม</label>
+    <select id="sort" name="sort" x-ref="sort" class="control w-full sm:w-52">
+      {% for key, label in sort_options %}
+      <option value="{{ key }}" {% if key == sort %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+  </div>
+</form>
+
+<div id="customer-table" class="mt-5">
+{% partialdef table inline %}
+  <p class="mb-3 text-muted" aria-live="polite">
+    {% if query %}พบ {{ page.paginator.count }} รายจากคำค้น “{{ query }}”{% else %}ลูกค้าทั้งหมด {{ page.paginator.count }} ราย{% endif %}
+  </p>
+
+  {% if page.object_list %}
+  {# Desktop and tablet: table #}
+  <div class="card hidden overflow-x-auto md:block">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th scope="col">
+            <button type="button" class="sort-btn" @click="$dispatch('set-sort', '{% if sort == 'name_az' %}name_za{% else %}name_az{% endif %}')">
+              ชื่อ-นามสกุล
+              {% if sort == "name_az" %}{% include "components/icon.html" with name="arrow-up" class="size-4" %}{% elif sort == "name_za" %}{% include "components/icon.html" with name="arrow-down" class="size-4" %}{% endif %}
+            </button>
+          </th>
+          <th scope="col">ทะเบียนรถ</th>
+          {% if show_phone %}<th scope="col">เบอร์โทร</th>{% endif %}
+          <th scope="col">
+            <button type="button" class="sort-btn" @click="$dispatch('set-sort', '{% if sort == 'bank_az' %}bank_za{% else %}bank_az{% endif %}')">
+              ธนาคาร
+              {% if sort == "bank_az" %}{% include "components/icon.html" with name="arrow-up" class="size-4" %}{% elif sort == "bank_za" %}{% include "components/icon.html" with name="arrow-down" class="size-4" %}{% endif %}
+            </button>
+          </th>
+          <th scope="col">เลขที่บัญชี</th>
+          <th scope="col">ผู้แนะนำ</th>
+          <th scope="col">
+            <button type="button" class="sort-btn" @click="$dispatch('set-sort', '{% if sort == 'newest' %}oldest{% else %}newest{% endif %}')">
+              วันที่เพิ่ม
+              {% if sort == "newest" %}{% include "components/icon.html" with name="arrow-down" class="size-4" %}{% elif sort == "oldest" %}{% include "components/icon.html" with name="arrow-up" class="size-4" %}{% endif %}
+            </button>
+          </th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for customer in page.object_list %}
+        <tr {% if customer.is_hidden %}class="is-hidden-row"{% endif %}>
+          <td class="font-semibold">
+            {{ customer.full_name }}
+            {% if customer.is_hidden %}<span class="badge badge-signal ml-2 align-middle">{% include "components/icon.html" with name="eye-off" class="mr-1 size-3.5" %}ซ่อน</span>{% endif %}
+          </td>
+          <td><span class="plate">{{ customer.license_plate }}</span></td>
+          {% if show_phone %}<td class="tabular-nums">{{ customer.phone }}</td>{% endif %}
+          <td>{{ customer.bank_name }}</td>
+          <td class="tabular-nums whitespace-nowrap">{{ customer.account_number|masked }}</td>
+          <td>{{ customer.referral }}</td>
+          <td class="whitespace-nowrap text-muted" title="{{ customer.created_at|date:'j F Y H:i' }}">{{ customer.created_at|date:"j M Y" }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {# Phone: cards #}
+  <ul class="flex flex-col gap-3 md:hidden">
+    {% for customer in page.object_list %}
+    <li class="card p-4 {% if customer.is_hidden %}is-hidden-row{% endif %}">
+      <div class="flex items-start justify-between gap-3">
+        <p class="text-lg font-semibold leading-snug">{{ customer.full_name }}</p>
+        {% if customer.is_hidden %}<span class="badge badge-signal flex-none">{% include "components/icon.html" with name="eye-off" class="mr-1 size-3.5" %}ซ่อน</span>{% endif %}
+      </div>
+      <p class="mt-2"><span class="plate">{{ customer.license_plate }}</span></p>
+      <dl class="mt-3 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-base">
+        <dt class="text-muted">ธนาคาร</dt><dd>{{ customer.bank_name }}</dd>
+        <dt class="text-muted">เลขที่บัญชี</dt><dd class="tabular-nums">{{ customer.account_number|masked }}</dd>
+        {% if show_phone %}<dt class="text-muted">เบอร์โทร</dt><dd class="tabular-nums">{{ customer.phone }}</dd>{% endif %}
+        <dt class="text-muted">ผู้แนะนำ</dt><dd>{{ customer.referral }}</dd>
+        <dt class="text-muted">วันที่เพิ่ม</dt><dd>{{ customer.created_at|date:"j M Y" }}</dd>
+      </dl>
+    </li>
+    {% endfor %}
+  </ul>
+
+  {% if page.paginator.num_pages > 1 %}
+  <nav class="mt-5 flex items-center justify-center gap-1.5" aria-label="เปลี่ยนหน้า">
+    {% if page.has_previous %}
+    <a class="page-btn" aria-label="หน้าแรก" href="{% url 'customer_list' %}{% querystring page=1 %}" hx-get="{% url 'customer_table' %}{% querystring page=1 %}" hx-target="#customer-table" hx-swap="innerHTML show:#customer-filters:top">{% include "components/icon.html" with name="chevrons-left" %}</a>
+    <a class="page-btn" aria-label="หน้าก่อนหน้า" href="{% url 'customer_list' %}{% querystring page=page.previous_page_number %}" hx-get="{% url 'customer_table' %}{% querystring page=page.previous_page_number %}" hx-target="#customer-table" hx-swap="innerHTML show:#customer-filters:top">{% include "components/icon.html" with name="chevron-left" %}</a>
+    {% else %}
+    <span class="page-btn" aria-disabled="true">{% include "components/icon.html" with name="chevrons-left" %}</span>
+    <span class="page-btn" aria-disabled="true">{% include "components/icon.html" with name="chevron-left" %}</span>
+    {% endif %}
+
+    <span class="px-3 font-semibold tabular-nums">หน้า {{ page.number }} / {{ page.paginator.num_pages }}</span>
+
+    {% if page.has_next %}
+    <a class="page-btn" aria-label="หน้าถัดไป" href="{% url 'customer_list' %}{% querystring page=page.next_page_number %}" hx-get="{% url 'customer_table' %}{% querystring page=page.next_page_number %}" hx-target="#customer-table" hx-swap="innerHTML show:#customer-filters:top">{% include "components/icon.html" with name="chevron-right" %}</a>
+    <a class="page-btn" aria-label="หน้าสุดท้าย" href="{% url 'customer_list' %}{% querystring page=page.paginator.num_pages %}" hx-get="{% url 'customer_table' %}{% querystring page=page.paginator.num_pages %}" hx-target="#customer-table" hx-swap="innerHTML show:#customer-filters:top">{% include "components/icon.html" with name="chevrons-right" %}</a>
+    {% else %}
+    <span class="page-btn" aria-disabled="true">{% include "components/icon.html" with name="chevron-right" %}</span>
+    <span class="page-btn" aria-disabled="true">{% include "components/icon.html" with name="chevrons-right" %}</span>
+    {% endif %}
+  </nav>
+  {% endif %}
+
+  {% else %}
+  <div class="card px-6 py-12 text-center">
+    {% if query %}
+    <p class="text-lg font-semibold">ไม่พบลูกค้าที่ตรงกับ “{{ query }}”</p>
+    <p class="mt-1 text-muted">ลองตรวจสอบตัวสะกด หรือค้นหาด้วยคำที่สั้นลง</p>
+    {% else %}
+    <p class="text-lg font-semibold">ยังไม่มีลูกค้า</p>
+    <p class="mt-1 text-muted">เมื่อลูกค้าลงทะเบียนผ่าน QR code รายชื่อจะแสดงที่นี่</p>
+    {% endif %}
+  </div>
+  {% endif %}
+{% endpartialdef %}
+</div>
+{% endblock %}

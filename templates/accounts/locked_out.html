@@ -1,0 +1,11 @@
+{% extends "public_base.html" %}
+
+{% block title %}บัญชีถูกล็อกชั่วคราว{% endblock %}
+
+{% block content %}
+<div class="card">
+  <h1>บัญชีถูกล็อกชั่วคราว</h1>
+  <p class="alert" role="alert">ใส่รหัสผ่านผิดเกิน {{ failure_limit }} ครั้ง กรุณารอ 15 นาทีแล้วลองใหม่อีกครั้ง</p>
+  <p><a href="{% url 'login' %}">กลับไปหน้าเข้าสู่ระบบ</a></p>
+</div>
+{% endblock %}

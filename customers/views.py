@@ -1,3 +1,4 @@
+from django.contrib.auth.decorators import login_not_required
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import redirect, render
 from django.utils import timezone
@@ -9,6 +10,7 @@ from customers.models import Customer
 from customers.rate_limit import is_rate_limited, record_attempt
 
 
+@login_not_required
 @require_http_methods(["GET", "POST"])
 def register(request: HttpRequest) -> HttpResponse:
     """Public QR form. Write-only: it never shows stored data."""
@@ -38,6 +40,13 @@ def register(request: HttpRequest) -> HttpResponse:
     return redirect("register_thanks")
 
 
+@login_not_required
 @require_GET
 def register_thanks(request: HttpRequest) -> HttpResponse:
     return render(request, "customers/register_thanks.html")
+
+
+@require_GET
+def customer_list(request: HttpRequest) -> HttpResponse:
+    """Temporary landing page after login. The real customers page is step 5."""
+    return render(request, "customers/home.html")

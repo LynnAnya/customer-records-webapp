@@ -1,0 +1,15 @@
+{% extends "public_base.html" %}
+
+{% block title %}ลูกค้า{% endblock %}
+
+{# Temporary landing page. The real customers page is build step 5. #}
+{% block content %}
+<div class="card">
+  <h1>สวัสดี {{ request.user.first_name|default:request.user.username }}</h1>
+  <p>เข้าสู่ระบบเรียบร้อยแล้ว หน้ารายชื่อลูกค้ากำลังอยู่ระหว่างการพัฒนา</p>
+  <form method="post" action="{% url 'logout' %}">
+    {% csrf_token %}
+    <button type="submit">ออกจากระบบ</button>
+  </form>
+</div>
+{% endblock %}

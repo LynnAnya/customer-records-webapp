@@ -10,6 +10,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/6.1/ref/settings/
 """
 
+from datetime import timedelta
 from pathlib import Path
 
 import environ
@@ -45,6 +46,7 @@ INSTALLED_APPS = [
     "accounts",
     "customers",
     "audit",
+    "axes",
 ]
 
 MIDDLEWARE = [
@@ -53,8 +55,12 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    # Default deny: every view needs a login unless marked @login_not_required.
+    "django.contrib.auth.middleware.LoginRequiredMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    # Must stay last (django-axes docs).
+    "axes.middleware.AxesMiddleware",
 ]
 
 ROOT_URLCONF = "config.urls"
@@ -86,6 +92,31 @@ DATABASES = {
 
 # Custom user model. Must be set before the first migration.
 AUTH_USER_MODEL = "accounts.User"
+
+# Login. The axes backend must come first so a locked-out login is refused.
+AUTHENTICATION_BACKENDS = [
+    "axes.backends.AxesStandaloneBackend",
+    "django.contrib.auth.backends.ModelBackend",
+]
+LOGIN_URL = "login"
+LOGIN_REDIRECT_URL = "customer_list"
+LOGOUT_REDIRECT_URL = "login"
+
+# Sliding 7-day session: every request renews it, 7 idle days ends it.
+SESSION_COOKIE_AGE = int(timedelta(days=7).total_seconds())
+SESSION_SAVE_EVERY_REQUEST = True
+
+# Login lockout (django-axes): 5 wrong passwords lock that username from that
+# IP address for 15 minutes.
+AXES_FAILURE_LIMIT = 5
+AXES_COOLOFF_TIME = timedelta(minutes=15)
+AXES_LOCKOUT_PARAMETERS = [["username", "ip_address"]]
+AXES_RESET_ON_SUCCESS = True
+AXES_RESET_COOL_OFF_ON_FAILURE_DURING_LOCKOUT = False
+AXES_LOCKOUT_TEMPLATE = "accounts/locked_out.html"
+AXES_CLIENT_IP_CALLABLE = "audit.services.get_client_ip"
+# Our own activity log records logins; do not keep a second copy.
+AXES_DISABLE_ACCESS_LOG = True
 
 # Public registration form: saved forms allowed per IP address per hour.
 # Generous on purpose: customers on the same Wi-Fi share one IP address.

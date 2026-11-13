@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+
+{% block title %}บัญชีผู้ใช้{% endblock %}
+
+{% block content %}
+<h1 class="text-3xl font-bold leading-snug">บัญชีผู้ใช้</h1>
+<p class="mt-1 text-muted">ข้อมูลบัญชีของคุณ ดูได้อย่างเดียว</p>
+
+<dl class="card mt-6 max-w-2xl overflow-hidden">
+  <div class="info-row"><dt>ชื่อผู้ใช้</dt><dd>{{ request.user.username }}</dd></div>
+  <div class="info-row"><dt>ชื่อ</dt><dd>{{ request.user.first_name|default:"-" }}</dd></div>
+  <div class="info-row"><dt>นามสกุล</dt><dd>{{ request.user.last_name|default:"-" }}</dd></div>
+  <div class="info-row"><dt>สิทธิ์การใช้งาน</dt><dd><span class="badge text-sm">{% if request.user.is_admin %}ผู้ดูแลระบบ{% else %}พนักงาน{% endif %}</span></dd></div>
+  <div class="info-row"><dt>เข้าสู่ระบบล่าสุด</dt><dd>{{ request.user.last_login|date:"j M Y H:i"|default:"-" }}</dd></div>
+  <div class="info-row"><dt>สร้างบัญชีเมื่อ</dt><dd>{{ request.user.date_joined|date:"j M Y H:i" }}</dd></div>
+</dl>
+{% endblock %}

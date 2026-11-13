@@ -4,61 +4,97 @@
   {% include "components/head.html" %}
   <title>{% block title %}ระบบข้อมูลลูกค้า{% endblock %}</title>
 </head>
-<body class="min-h-dvh">
+<body class="min-h-dvh" x-data="appShell()" @keydown.escape.window="drawer = false">
   <a href="#main" class="btn btn-primary sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-50">ข้ามไปที่เนื้อหา</a>
 
-  {# Desktop: left sidebar #}
-  <aside class="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col bg-rail px-6 py-7 lg:flex">
-    <a href="{% url 'customer_list' %}" class="rounded-xl">{% include "components/brand.html" with tone="rail" %}</a>
+  {# Mobile: dark layer behind the floating menu. Tap it to close. #}
+  <div x-show="drawer" x-cloak x-transition.opacity @click="drawer = false" class="fixed inset-0 z-30 bg-black/55 lg:hidden"></div>
 
-    <nav class="mt-10 flex flex-col gap-1.5" aria-label="เมนูหลัก">
+  {# Sidebar. Desktop: always there, hamburger shrinks it to icons. Mobile: floats over the page. #}
+  <aside id="sidebar" :data-open="drawer"
+         class="fixed inset-y-0 left-0 z-40 flex w-72 max-w-[85vw] flex-col overflow-y-auto bg-rail px-3 py-4 transition-[translate,width] max-lg:data-[open=true]:shadow-2xl duration-200 max-lg:-translate-x-full max-lg:data-[open=true]:translate-x-0 lg:w-64 lg:collapsed:w-[4.5rem]"
+         aria-label="เมนูหลัก">
+
+    <div class="flex items-center gap-2">
+      <button type="button" @click="toggleMenu()" class="rail-item w-12 flex-none justify-center px-0" aria-controls="sidebar" aria-label="ย่อหรือขยายเมนู" title="เมนู">
+        <span class="lg:hidden">{% include "components/icon.html" with name="x" class="size-6" %}</span>
+        <span class="max-lg:hidden">{% include "components/icon.html" with name="menu" class="size-6" %}</span>
+      </button>
+      <a href="{% url 'customer_list' %}" class="truncate rounded-lg text-lg font-bold text-white lg:collapsed:hidden">ระบบข้อมูลลูกค้า</a>
+    </div>
+
+    <nav class="mt-6 flex flex-col gap-1">
       {% for item in nav_items %}
-      <a href="{% url item.url_name %}" class="rail-item" {% if request.resolver_match.url_name == item.url_name %}aria-current="page"{% endif %}>
+      <a href="{% url item.url_name %}" class="rail-item" title="{{ item.label }}" {% if request.resolver_match.url_name == item.url_name %}aria-current="page"{% endif %}>
         {% include "components/icon.html" with name=item.icon %}
-        {{ item.label }}
+        <span class="lg:collapsed:hidden">{{ item.label }}</span>
       </a>
       {% endfor %}
+
+      {# ตั้งค่า > ธีม > three choices #}
+      <button type="button" class="rail-item" title="ตั้งค่า" @click="toggleSettings()" :aria-expanded="settingsOpen">
+        {% include "components/icon.html" with name="settings" %}
+        <span class="lg:collapsed:hidden">ตั้งค่า</span>
+        {% include "components/icon.html" with name="chevron-down" class="rail-chevron lg:collapsed:hidden" %}
+      </button>
+      <div x-show="settingsOpen" x-cloak x-transition.opacity class="flex flex-col gap-1 lg:collapsed:hidden">
+        <button type="button" class="rail-item rail-sub" @click="themeOpen = !themeOpen" :aria-expanded="themeOpen">
+          {% include "components/icon.html" with name="contrast" class="size-4.5" %}
+          <span>ธีม</span>
+          {% include "components/icon.html" with name="chevron-down" class="rail-chevron" %}
+        </button>
+        <div x-show="themeOpen" x-cloak x-transition.opacity class="flex flex-col gap-1" role="group" aria-label="ธีม">
+          <button type="button" class="rail-item rail-choice" @click="setTheme('light')" :aria-pressed="theme === 'light'">
+            {% include "components/icon.html" with name="sun" class="size-4.5" %}<span>สว่าง</span>
+            <span x-show="theme === 'light'" class="ml-auto">{% include "components/icon.html" with name="check" class="size-4.5" %}</span>
+          </button>
+          <button type="button" class="rail-item rail-choice" @click="setTheme('dark')" :aria-pressed="theme === 'dark'">
+            {% include "components/icon.html" with name="moon" class="size-4.5" %}<span>มืด</span>
+            <span x-show="theme === 'dark'" class="ml-auto">{% include "components/icon.html" with name="check" class="size-4.5" %}</span>
+          </button>
+          <button type="button" class="rail-item rail-choice" @click="setTheme('system')" :aria-pressed="theme === 'system'">
+            {% include "components/icon.html" with name="monitor" class="size-4.5" %}<span>ตามอุปกรณ์</span>
+            <span x-show="theme === 'system'" class="ml-auto">{% include "components/icon.html" with name="check" class="size-4.5" %}</span>
+          </button>
+        </div>
+      </div>
     </nav>
 
-    <div class="mt-auto flex flex-col gap-4">
-      <div class="rounded-2xl bg-rail-hover px-4 py-3.5">
-        <p class="truncate font-semibold text-white">{{ request.user.get_full_name|default:request.user.username }}</p>
-        <p class="mt-1 text-sm text-rail-ink">{% if request.user.is_admin %}ผู้ดูแลระบบ{% else %}พนักงาน{% endif %}</p>
-      </div>
-      <div class="flex items-center justify-between">
-        <span class="text-sm text-rail-ink">ธีมสี</span>
-        {% include "components/theme_switch.html" with tone="rail" %}
-      </div>
-      <form method="post" action="{% url 'logout' %}">
-        {% csrf_token %}
-        <button type="submit" class="rail-item w-full cursor-pointer">
-          {% include "components/icon.html" with name="log-out" %}
-          ออกจากระบบ
-        </button>
-      </form>
-    </div>
+    <form method="post" action="{% url 'logout' %}" class="mt-auto pt-4">
+      {% csrf_token %}
+      <button type="submit" class="rail-item" title="ออกจากระบบ">
+        {% include "components/icon.html" with name="log-out" %}
+        <span class="lg:collapsed:hidden">ออกจากระบบ</span>
+      </button>
+    </form>
   </aside>
 
-  {# Mobile: top bar #}
-  <header class="sticky top-0 z-20 flex items-center justify-between border-b border-line bg-surface/95 px-4 py-2.5 backdrop-blur lg:hidden">
-    {% include "components/brand.html" %}
-    {% include "components/theme_switch.html" %}
+  {# Mobile: top bar with the hamburger #}
+  <header class="sticky top-0 z-20 flex items-center gap-2 border-b border-line bg-surface/95 px-2 py-1.5 backdrop-blur lg:hidden">
+    <button type="button" @click="toggleMenu()" class="btn btn-quiet w-12 px-0" aria-controls="sidebar" :aria-expanded="drawer" aria-label="เปิดเมนู">
+      {% include "components/icon.html" with name="menu" class="size-6" %}
+    </button>
+    <span class="text-lg font-bold">ระบบข้อมูลลูกค้า</span>
   </header>
 
-  <main id="main" class="pb-28 lg:pb-0 lg:pl-64">
+  <main id="main" class="pb-28 transition-[padding] duration-200 lg:pb-0 lg:pl-64 lg:collapsed:pl-[4.5rem]">
     <div class="mx-auto max-w-6xl px-4 py-6 lg:px-10 lg:py-10">
       {% block content %}{% endblock %}
     </div>
   </main>
 
   {# Mobile: bottom tab bar #}
-  <nav class="fixed inset-x-0 bottom-0 z-30 flex border-t border-line bg-surface pb-[env(safe-area-inset-bottom)] lg:hidden" aria-label="เมนูหลัก">
+  <nav class="fixed inset-x-0 bottom-0 z-20 flex border-t border-line bg-surface pb-[env(safe-area-inset-bottom)] lg:hidden" aria-label="เมนูลัด">
     {% for item in nav_items %}
     <a href="{% url item.url_name %}" class="tab-item" {% if request.resolver_match.url_name == item.url_name %}aria-current="page"{% endif %}>
       {% include "components/icon.html" with name=item.icon class="size-6" %}
       {{ item.label }}
     </a>
     {% endfor %}
+    <button type="button" class="tab-item" @click="openSettingsDrawer()">
+      {% include "components/icon.html" with name="settings" class="size-6" %}
+      ตั้งค่า
+    </button>
     <form method="post" action="{% url 'logout' %}" class="flex flex-1">
       {% csrf_token %}
       <button type="submit" class="tab-item">

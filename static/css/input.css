@@ -4,8 +4,10 @@
 @source "../../customers";
 @source "../../accounts";
 
-/* Dark mode follows the `dark` class on <html>, set by static/js/theme.js. */
+/* Dark mode follows the `dark` class on <html>, set by static/js/app.js. */
 @custom-variant dark (&:where(.dark, .dark *));
+/* Desktop sidebar shrunk to icons: `rail-collapsed` class on <html>, set by static/js/app.js. */
+@custom-variant collapsed (&:where(.rail-collapsed, .rail-collapsed *));
 
 @font-face {
   font-family: "Noto Sans Thai";
@@ -169,7 +171,7 @@
 
   /* Sidebar and bottom-tab items. */
   .rail-item {
-    @apply relative flex min-h-12 items-center gap-3 rounded-xl px-3.5 text-base font-medium text-rail-ink transition-colors hover:bg-rail-hover hover:text-white;
+    @apply relative flex min-h-12 w-full cursor-pointer items-center gap-3 rounded-xl px-3.5 text-left text-base font-medium text-rail-ink transition-colors hover:bg-rail-hover hover:text-white;
   }
   .rail-item[aria-current="page"] {
     @apply bg-rail-hover text-white;
@@ -185,24 +187,32 @@
     @apply text-accent;
   }
 
-  /* Theme switch: three small buttons in one pill. */
-  .theme-switch {
-    @apply inline-flex rounded-full border border-line bg-sunken p-1;
+  /* Sub-menu rows inside the sidebar (ตั้งค่า > ธีม > choices). */
+  .rail-sub {
+    @apply min-h-11 pl-11 text-[0.95rem];
   }
-  .theme-switch button {
-    @apply flex size-9 cursor-pointer items-center justify-center rounded-full text-muted transition-colors hover:text-ink;
+  .rail-choice {
+    @apply min-h-11 pl-[4.25rem] text-[0.95rem];
   }
-  .theme-switch button[aria-pressed="true"] {
-    @apply bg-accent text-on-accent;
+  .rail-choice[aria-pressed="true"] {
+    @apply font-semibold text-signal;
   }
-  .theme-switch-rail {
-    @apply border-transparent bg-rail-hover;
+  .rail-chevron {
+    @apply ml-auto size-4 flex-none transition-transform;
   }
-  .theme-switch-rail button {
-    @apply text-rail-ink hover:text-white;
+  [aria-expanded="true"] > .rail-chevron {
+    @apply rotate-180;
   }
-  .theme-switch-rail button[aria-pressed="true"] {
-    @apply bg-signal text-[#3a2600];
+
+  /* Read-only label/value rows (account page). */
+  .info-row {
+    @apply flex flex-col gap-0.5 border-b border-line px-5 py-4 last:border-b-0 sm:flex-row sm:items-center sm:gap-6 sm:px-6;
+  }
+  .info-row dt {
+    @apply text-sm font-medium text-muted sm:w-48 sm:flex-none sm:text-base;
+  }
+  .info-row dd {
+    @apply text-lg font-semibold text-ink;
   }
 
   /* Consent row on the public form. */

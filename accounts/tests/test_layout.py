@@ -49,16 +49,17 @@ def test_admin_only_item_is_in_the_admin_page(
     assert "เฉพาะแอดมิน" in client.get(CUSTOMERS).text
 
 
-def test_page_shows_the_role_and_a_post_logout(client, admin, staff) -> None:
-    client.force_login(admin)
-    admin_page = client.get(CUSTOMERS).text
-    client.force_login(staff)
-    staff_page = client.get(CUSTOMERS).text
+def test_menu_has_the_same_items_for_both_roles_and_a_post_logout(
+    client, admin, staff
+) -> None:
+    for user in (admin, staff):
+        client.force_login(user)
+        page = client.get(CUSTOMERS).text
 
-    assert "ผู้ดูแลระบบ" in admin_page
-    assert "ผู้ดูแลระบบ" not in staff_page
-    assert "พนักงาน" in staff_page
-    assert f'<form method="post" action="{reverse("logout")}"' in staff_page
+        assert "ลูกค้า" in page
+        assert "บัญชีผู้ใช้" in page
+        assert "ตั้งค่า" in page
+        assert f'<form method="post" action="{reverse("logout")}"' in page
 
 
 @pytest.mark.django_db

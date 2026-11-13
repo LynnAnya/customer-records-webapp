@@ -1,6 +1,8 @@
 from django.contrib.auth.views import LoginView, LogoutView
 from django.urls import path
 
+from accounts import views
+
 urlpatterns = [
     path(
         "login/",
@@ -11,4 +13,5 @@ urlpatterns = [
     ),
     # LogoutView only accepts POST.
     path("logout/", LogoutView.as_view(), name="logout"),
+    path("account/", views.account, name="account"),
 ]

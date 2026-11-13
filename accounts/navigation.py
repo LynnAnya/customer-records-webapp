@@ -16,9 +16,11 @@ class NavItem:
     admin_only: bool = False
 
 
-# Add an item here when its page is built (staff, activity log, settings).
+# Add an item here when its page is built (staff, activity log).
+# ตั้งค่า and ออกจากระบบ are not page links; they live in templates/base.html.
 NAV_ITEMS: tuple[NavItem, ...] = (
     NavItem(label="ลูกค้า", url_name="customer_list", icon="users"),
+    NavItem(label="บัญชีผู้ใช้", url_name="account", icon="circle-user"),
 )
 
 

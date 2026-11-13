@@ -48,7 +48,7 @@ class CustomerForm(forms.ModelForm):
             "last_name": "นามสกุล",
             "license_plate": "ทะเบียนรถ",
             "bank_name": "ธนาคาร",
-            "referral": "ผู้แนะนำ (ไม่บังคับ)",
+            "referral": "ผู้แนะนำ (ถ้ามี)",
         }
         widgets = {
             "first_name": forms.TextInput(attrs={"autocomplete": "given-name"}),

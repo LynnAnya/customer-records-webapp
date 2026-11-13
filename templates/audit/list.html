@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+{% load audit_format %}
+
+{% block title %}บันทึกกิจกรรม{% endblock %}
+
+{% block content %}
+<h1 class="text-3xl font-bold leading-snug">บันทึกกิจกรรม</h1>
+<p class="mt-1 text-muted">ใครทำอะไร เมื่อไร ดูได้อย่างเดียว แก้ไขหรือลบไม่ได้</p>
+
+<form id="log-filters" method="get" action="{% url 'activity_log' %}"
+      hx-get="{% url 'activity_log_table' %}" hx-target="#log-table" hx-trigger="change, submit"
+      class="filter-panel lg:grid-cols-4">
+  <div>
+    <label for="user">ผู้ใช้</label>
+    <select id="user" name="user" class="control">
+      <option value="">ทุกคน</option>
+      {% for user in user_options %}
+      <option value="{{ user.pk }}" {% if user.pk == filters.user_id %}selected{% endif %}>{{ user.username }}{% if user.get_full_name %} ({{ user.get_full_name }}){% endif %}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div>
+    <label for="action">การกระทำ</label>
+    <select id="action" name="action" class="control">
+      <option value="">ทั้งหมด</option>
+      {% for value, label in action_options %}
+      <option value="{{ value }}" {% if value == filters.action %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div>
+    <label for="from">ตั้งแต่วันที่</label>
+    <input id="from" name="from" type="date" value="{{ filters.date_from|date:'Y-m-d' }}" class="control">
+  </div>
+  <div>
+    <label for="to">ถึงวันที่</label>
+    <input id="to" name="to" type="date" value="{{ filters.date_to|date:'Y-m-d' }}" class="control">
+  </div>
+  {% if filters.active_count %}
+  <div class="sm:col-span-2 lg:col-span-4">
+    <a href="{% url 'activity_log' %}" class="btn btn-quiet min-h-10 px-3 text-sm">ล้างตัวกรองทั้งหมด</a>
+  </div>
+  {% endif %}
+</form>
+
+<div id="log-table" class="mt-5">
+{% partialdef table inline %}
+  {# Refresh every 10 seconds, keeping the filters and page. #}
+  <div hidden hx-get="{% url 'activity_log_table' %}{% querystring %}" hx-trigger="every 10s [document.visibilityState === 'visible']" hx-target="#log-table"></div>
+
+  <p class="mb-3 flex flex-wrap items-center justify-between gap-2 text-muted">
+    <span>{% if filters.active_count %}พบ {{ page.paginator.count }} รายการ{% else %}ทั้งหมด {{ page.paginator.count }} รายการ{% endif %}</span>
+    <span class="text-sm tabular-nums">อัปเดตล่าสุด {{ updated_at|date:"H:i:s" }}</span>
+  </p>
+
+  {% if page.object_list %}
+  {# Desktop and tablet: table #}
+  <div class="card hidden overflow-x-auto md:block">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th scope="col">เวลา</th>
+          <th scope="col">ผู้ใช้</th>
+          <th scope="col">การกระทำ</th>
+          <th scope="col">รายละเอียด</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for entry in page.object_list %}
+        <tr>
+          <td class="whitespace-nowrap" title="{{ entry.created_at|date:'j F Y H:i:s' }}">{{ entry.created_at|ago }}</td>
+          <td>
+            <span class="font-semibold">{{ entry.username|default:"-" }}</span>
+            {% if entry.user and entry.user.get_full_name %}<span class="text-muted"> ({{ entry.user.get_full_name }})</span>{% endif %}
+          </td>
+          <td><span class="badge {% if entry.action|is_alert %}badge-danger{% endif %} whitespace-nowrap">{{ entry.action|action_label }}</span></td>
+          <td>{{ entry.details|describe|default:"-" }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {# Phone: cards #}
+  <ul class="flex flex-col gap-3 md:hidden">
+    {% for entry in page.object_list %}
+    <li class="card p-4">
+      <div class="flex items-start justify-between gap-3">
+        <span class="badge {% if entry.action|is_alert %}badge-danger{% endif %}">{{ entry.action|action_label }}</span>
+        <span class="flex-none text-sm text-muted" title="{{ entry.created_at|date:'j F Y H:i:s' }}">{{ entry.created_at|ago }}</span>
+      </div>
+      <p class="mt-2"><span class="font-semibold">{{ entry.username|default:"-" }}</span>{% if entry.user and entry.user.get_full_name %}<span class="text-muted"> ({{ entry.user.get_full_name }})</span>{% endif %}</p>
+      {% if entry.details|describe %}<p class="mt-1 text-muted">{{ entry.details|describe }}</p>{% endif %}
+    </li>
+    {% endfor %}
+  </ul>
+
+  {% if page.paginator.num_pages > 1 %}
+  <nav class="mt-5 flex items-center justify-center gap-1.5" aria-label="เปลี่ยนหน้า">
+    {% if page.has_previous %}
+    <a class="page-btn" aria-label="หน้าแรก" href="{% url 'activity_log' %}{% querystring page=1 %}" hx-get="{% url 'activity_log_table' %}{% querystring page=1 %}" hx-target="#log-table" hx-swap="innerHTML show:#log-filters:top">{% include "components/icon.html" with name="chevrons-left" %}</a>
+    <a class="page-btn" aria-label="หน้าก่อนหน้า" href="{% url 'activity_log' %}{% querystring page=page.previous_page_number %}" hx-get="{% url 'activity_log_table' %}{% querystring page=page.previous_page_number %}" hx-target="#log-table" hx-swap="innerHTML show:#log-filters:top">{% include "components/icon.html" with name="chevron-left" %}</a>
+    {% else %}
+    <span class="page-btn" aria-disabled="true">{% include "components/icon.html" with name="chevrons-left" %}</span>
+    <span class="page-btn" aria-disabled="true">{% include "components/icon.html" with name="chevron-left" %}</span>
+    {% endif %}
+    <span class="px-3 font-semibold tabular-nums">หน้า {{ page.number }} / {{ page.paginator.num_pages }}</span>
+    {% if page.has_next %}
+    <a class="page-btn" aria-label="หน้าถัดไป" href="{% url 'activity_log' %}{% querystring page=page.next_page_number %}" hx-get="{% url 'activity_log_table' %}{% querystring page=page.next_page_number %}" hx-target="#log-table" hx-swap="innerHTML show:#log-filters:top">{% include "components/icon.html" with name="chevron-right" %}</a>
+    <a class="page-btn" aria-label="หน้าสุดท้าย" href="{% url 'activity_log' %}{% querystring page=page.paginator.num_pages %}" hx-get="{% url 'activity_log_table' %}{% querystring page=page.paginator.num_pages %}" hx-target="#log-table" hx-swap="innerHTML show:#log-filters:top">{% include "components/icon.html" with name="chevrons-right" %}</a>
+    {% else %}
+    <span class="page-btn" aria-disabled="true">{% include "components/icon.html" with name="chevron-right" %}</span>
+    <span class="page-btn" aria-disabled="true">{% include "components/icon.html" with name="chevrons-right" %}</span>
+    {% endif %}
+  </nav>
+  {% endif %}
+
+  {% else %}
+  <div class="card px-6 py-12 text-center">
+    <p class="text-lg font-semibold">{% if filters.active_count %}ไม่พบรายการที่ตรงกับตัวกรอง{% else %}ยังไม่มีบันทึกกิจกรรม{% endif %}</p>
+  </div>
+  {% endif %}
+{% endpartialdef %}
+</div>
+{% endblock %}

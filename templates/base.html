@@ -101,7 +101,7 @@
     {% for item in nav_items %}
     <a href="{% url item.url_name %}" class="tab-item" {% if request.resolver_match.url_name == item.url_name %}aria-current="page"{% endif %}>
       {% include "components/icon.html" with name=item.icon class="size-6" %}
-      {{ item.label }}
+      {{ item.short_label }}
     </a>
     {% endfor %}
     <button type="button" class="tab-item" @click="openSettingsDrawer()">
@@ -112,7 +112,7 @@
       {% csrf_token %}
       <button type="submit" class="tab-item">
         {% include "components/icon.html" with name="log-out" class="size-6" %}
-        ออกจากระบบ
+        ออก
       </button>
     </form>
   </nav>

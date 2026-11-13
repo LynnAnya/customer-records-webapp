@@ -78,6 +78,14 @@ def register_thanks(request: HttpRequest) -> HttpResponse:
     return render(request, "customers/register_thanks.html")
 
 
+def _list_url(params: dict[str, str], page_number: int) -> str:
+    """Address of the customers page for this search, sort, filters and page."""
+    if page_number > 1:
+        params = {**params, "page": str(page_number)}
+    query = urlencode(params)
+    return f"{reverse('customer_list')}?{query}" if query else reverse("customer_list")
+
+
 def _table_context(request: HttpRequest) -> dict:
     """Read search, sort, filters, page and ticked IDs from the URL."""
     user = request.user
@@ -112,6 +120,8 @@ def _table_context(request: HttpRequest) -> dict:
         "source_options": SOURCE_OPTIONS,
         "referral_options": referral_choices(visible_customers(user)),
         "state_query": urlencode(params),
+        # Where admin actions return to: this list, same search and page.
+        "list_url": _list_url(params, page.number),
         "show_phone": can_see_phone(user),
         "is_admin": user.is_admin,
     }
@@ -129,8 +139,5 @@ def customer_table(request: HttpRequest) -> HttpResponse:
     context = _table_context(request)
     response = render(request, "customers/list.html#table", context)
     # Keep the address bar on the full page, so reload and bookmarks work.
-    page_params = context["state_query"]
-    if context["page"].number > 1:
-        page_params = f"{page_params}&page={context['page'].number}".lstrip("&")
-    response["HX-Push-Url"] = f"{reverse('customer_list')}?{page_params}".rstrip("?")
+    response["HX-Push-Url"] = context["list_url"]
     return response

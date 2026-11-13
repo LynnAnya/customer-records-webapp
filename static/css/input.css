@@ -123,6 +123,19 @@
   .btn-quiet {
     @apply text-ink hover:bg-sunken;
   }
+  .btn-danger {
+    @apply bg-danger text-surface hover:opacity-90 active:translate-y-px;
+  }
+  .btn-outline {
+    @apply border border-line bg-surface text-ink hover:bg-sunken;
+  }
+  /* Small square button that holds one icon (row actions). */
+  .icon-btn {
+    @apply inline-flex size-9 cursor-pointer items-center justify-center rounded-lg text-muted transition-colors hover:bg-accent-soft hover:text-accent-strong;
+  }
+  .icon-btn-danger {
+    @apply hover:bg-danger-soft hover:text-danger;
+  }
   .btn-block {
     @apply w-full;
   }
@@ -132,6 +145,27 @@
   }
   .badge-signal {
     @apply bg-signal text-[#3a2600];
+  }
+
+  .notice-warning {
+    @apply flex items-start gap-3 rounded-xl border border-signal bg-signal/12 px-4 py-3 text-base text-ink;
+  }
+
+  /* One-time messages after an action, top right. */
+  .toast {
+    @apply pointer-events-auto flex items-start gap-3 rounded-xl border border-line bg-surface px-4 py-3 text-base font-medium text-ink shadow-card;
+  }
+  .toast-success {
+    @apply border-l-4 border-l-success;
+  }
+  .toast-warning {
+    @apply border-l-4 border-l-signal;
+  }
+  .toast-info {
+    @apply border-l-4 border-l-accent;
+  }
+  .toast-error {
+    @apply border-l-4 border-l-danger;
   }
 
   .alert {
@@ -220,16 +254,28 @@
     @apply w-full border-collapse text-left text-base;
   }
   .data-table th {
-    @apply border-b border-line bg-sunken px-4 py-3 text-sm font-semibold whitespace-nowrap text-muted;
+    @apply border-b border-line bg-sunken px-3 py-3 text-sm font-semibold whitespace-nowrap text-muted;
   }
   .data-table td {
-    @apply border-b border-line px-4 py-3.5 align-middle;
+    @apply border-b border-line px-3 py-3 align-middle;
+  }
+  .data-table th:first-child,
+  .data-table td:first-child {
+    @apply pl-4;
   }
   .data-table tbody tr:last-child td {
     @apply border-b-0;
   }
   .data-table tbody tr {
-    @apply transition-colors hover:bg-sunken;
+    @apply bg-surface transition-colors hover:bg-sunken;
+  }
+  /* Row actions stay in view when a narrow screen scrolls the table sideways. */
+  .data-table .actions-cell {
+    @apply sticky right-0 pr-2 pl-1 text-right whitespace-nowrap;
+    background: inherit;
+  }
+  .data-table th.actions-cell {
+    @apply bg-sunken;
   }
   .data-table .check-cell {
     @apply w-12 pr-0;
@@ -251,6 +297,9 @@
   .selection-bar {
     @apply sticky top-14 z-10 mt-4 flex items-center justify-between gap-3 rounded-2xl bg-accent px-4 py-2.5 text-on-accent shadow-card lg:top-3;
   }
+  .bar-btn {
+    @apply inline-flex min-h-10 cursor-pointer items-center gap-1.5 rounded-lg bg-on-accent/15 px-3 font-semibold hover:bg-on-accent/25;
+  }
   .filter-panel {
     @apply mt-3 grid gap-4 rounded-2xl border border-line bg-surface p-4 shadow-card sm:grid-cols-2 lg:grid-cols-5;
   }
@@ -260,8 +309,10 @@
   .filter-panel .control {
     @apply w-full shadow-none;
   }
-  .is-hidden-row {
-    @apply bg-signal/8;
+  /* Solid colour (not see-through), so the sticky actions cell can share it. */
+  .is-hidden-row,
+  .data-table tbody tr.is-hidden-row {
+    background: color-mix(in srgb, var(--signal) 9%, var(--surface));
   }
   .sort-btn {
     @apply -mx-2 inline-flex min-h-9 cursor-pointer items-center gap-1 rounded-lg px-2 font-semibold hover:bg-line/50 hover:text-ink;

@@ -99,6 +99,9 @@ AUTHENTICATION_BACKENDS = [
     "axes.backends.AxesStandaloneBackend",
     "django.contrib.auth.backends.ModelBackend",
 ]
+# Keep one-time messages on the server, not in a cookie: they can name customers.
+MESSAGE_STORAGE = "django.contrib.messages.storage.session.SessionStorage"
+
 LOGIN_URL = "login"
 LOGIN_REDIRECT_URL = "customer_list"
 LOGOUT_REDIRECT_URL = "login"

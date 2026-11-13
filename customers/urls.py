@@ -1,12 +1,24 @@
 from django.urls import path
 from django.views.generic import RedirectView
 
-from customers import views
+from customers import views, views_admin
 
 urlpatterns = [
     path("", RedirectView.as_view(pattern_name="customer_list"), name="home"),
     path("customers/", views.customer_list, name="customer_list"),
     path("customers/table/", views.customer_table, name="customer_table"),
+    # Admin only
+    path("customers/new/", views_admin.customer_create, name="customer_create"),
+    path(
+        "customers/hide/", views_admin.customer_set_hidden, name="customer_set_hidden"
+    ),
+    path("customers/<int:pk>/edit/", views_admin.customer_edit, name="customer_edit"),
+    path(
+        "customers/<int:pk>/delete/",
+        views_admin.customer_delete,
+        name="customer_delete",
+    ),
+    # Public
     path("register/", views.register, name="register"),
     path("register/thanks/", views.register_thanks, name="register_thanks"),
 ]

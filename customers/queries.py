@@ -1,10 +1,10 @@
 from django.contrib.auth.models import AbstractBaseUser, AnonymousUser
-from django.db.models import Q, QuerySet
+from django.db.models import Exists, OuterRef, Q, QuerySet
 from django.db.models.functions import Collate
 
 from customers.filters import CustomerFilters, apply_filters
 from customers.models import Customer
-from customers.visibility import visible_fields
+from customers.visibility import can_see_phone, visible_fields
 
 # Postgres' built-in Thai (ICU) collation, so names sort ก-ฮ the way Thai readers
 # expect (the database default would put เ แ โ ใ ไ after ฮ).
@@ -66,6 +66,7 @@ def search_customers(
         for field in fields:
             matches_word |= Q(**{f"{field}__icontains": word})
         customers = customers.filter(matches_word)
+    customers = _flag_duplicate_phones(customers, user)
     return customers.order_by(*SORTS[clean_sort(sort)])
 
 
@@ -77,7 +78,27 @@ def pinned_customers(
     IDs from the browser are never trusted: each one is looked up through
     `visible_customers(user)`, so hidden or deleted customers are dropped.
     """
-    by_id = visible_customers(user).in_bulk(ids)
+    by_id = _flag_duplicate_phones(visible_customers(user), user).in_bulk(ids)
     pinned = [by_id[pk] for pk in ids if pk in by_id]
     dropped = [pk for pk in ids if pk not in by_id]
     return pinned, dropped
+
+
+def _flag_duplicate_phones(
+    customers: QuerySet[Customer], user: AbstractBaseUser | AnonymousUser
+) -> QuerySet[Customer]:
+    """Add `has_duplicate_phone` to each row, for admins only.
+
+    Staff never see phones, so they get no hint about them either.
+    """
+    if not can_see_phone(user):
+        return customers
+    same_phone = Customer.objects.filter(phone=OuterRef("phone")).exclude(
+        pk=OuterRef("pk")
+    )
+    return customers.annotate(has_duplicate_phone=Exists(same_phone))
+
+
+def phone_duplicates(customer: Customer) -> QuerySet[Customer]:
+    """Other customers with the same phone. For admin pages only."""
+    return Customer.objects.filter(phone=customer.phone).exclude(pk=customer.pk)

@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+
+{% block title %}ลบลูกค้า{% endblock %}
+
+{% block content %}
+<div class="max-w-xl">
+  <h1 class="text-3xl font-bold leading-snug">ลบลูกค้า {{ customer.full_name }}?</h1>
+
+  <form method="post" class="card mt-5 p-5 sm:p-7">
+    {% csrf_token %}
+    <input type="hidden" name="next" value="{{ back_url }}">
+    <p class="text-lg">ข้อมูลของ <strong>{{ customer.full_name }}</strong> (ทะเบียน {{ customer.license_plate }}) จะถูกลบถาวรและกู้คืนไม่ได้</p>
+    <p class="mt-2 text-muted">หากต้องการเพียงไม่ให้พนักงานเห็น ให้ใช้ “ซ่อน” แทนการลบ</p>
+
+    <div class="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:items-center">
+      <a href="{{ back_url }}" class="btn btn-outline">ยกเลิก</a>
+      <button type="submit" class="btn btn-danger sm:ml-auto">ลบถาวร</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

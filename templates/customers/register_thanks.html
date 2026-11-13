@@ -1,10 +1,14 @@
 {% extends "public_base.html" %}
 
 {% block title %}ขอบคุณ{% endblock %}
+{% block heading %}ขอบคุณค่ะ{% endblock %}
+{% block lead %}เราได้รับข้อมูลของท่านเรียบร้อยแล้ว{% endblock %}
 
 {% block content %}
-<div class="card">
-  <h1>ขอบคุณค่ะ</h1>
-  <p>เราได้รับข้อมูลของท่านเรียบร้อยแล้ว ท่านสามารถปิดหน้านี้ได้</p>
+<div class="card flex items-start gap-4 p-6">
+  <span class="flex size-11 flex-none items-center justify-center rounded-full bg-accent-soft text-accent-strong">
+    {% include "components/icon.html" with name="check" class="size-6" %}
+  </span>
+  <p class="text-lg">ลงทะเบียนสำเร็จ ท่านสามารถปิดหน้านี้ได้</p>
 </div>
 {% endblock %}

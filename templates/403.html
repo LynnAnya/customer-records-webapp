@@ -1,11 +1,11 @@
 {% extends "public_base.html" %}
 
 {% block title %}ไม่มีสิทธิ์เข้าถึง{% endblock %}
+{% block heading %}ไม่มีสิทธิ์เข้าถึง{% endblock %}
+{% block lead %}บัญชีของคุณไม่มีสิทธิ์ใช้งานหน้านี้{% endblock %}
 
 {% block content %}
-<div class="card">
-  <h1>ไม่มีสิทธิ์เข้าถึง</h1>
-  <p>บัญชีของคุณไม่มีสิทธิ์ใช้งานหน้านี้</p>
-  <p><a href="{% url 'customer_list' %}">กลับหน้าหลัก</a></p>
+<div class="card p-6">
+  <a href="{% url 'customer_list' %}" class="btn btn-primary btn-block">กลับหน้าลูกค้า</a>
 </div>
 {% endblock %}

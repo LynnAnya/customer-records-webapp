@@ -1,25 +1,26 @@
 {% extends "public_base.html" %}
 
 {% block title %}เข้าสู่ระบบ{% endblock %}
+{% block heading %}เข้าสู่ระบบ{% endblock %}
+{% block lead %}สำหรับผู้ดูแลระบบและพนักงาน{% endblock %}
 
 {% block content %}
-<h1>เข้าสู่ระบบ</h1>
-<form method="post" novalidate class="card">
+<form method="post" novalidate class="card p-5 sm:p-7">
   {% csrf_token %}
 
   {% for error in form.non_field_errors %}
-  <p class="alert" role="alert">{{ error }}</p>
+  <p class="alert mb-5" role="alert">{{ error }}</p>
   {% endfor %}
 
   {% for field in form %}
   <div class="field">
     <label for="{{ field.id_for_label }}">{{ field.label }}</label>
     {{ field }}
-    {% for error in field.errors %}<p class="error">{{ error }}</p>{% endfor %}
+    {% for error in field.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
   </div>
   {% endfor %}
 
   <input type="hidden" name="next" value="{{ next }}">
-  <button type="submit">เข้าสู่ระบบ</button>
+  <button type="submit" class="btn btn-primary btn-block">เข้าสู่ระบบ</button>
 </form>
 {% endblock %}

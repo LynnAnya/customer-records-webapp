@@ -62,6 +62,8 @@ class CustomerForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         # The model default would pre-fill the box; blank is saved as the default.
         self.fields["referral"].initial = ""
+        for name in CustomerForm.Meta.fields:
+            self.fields[name].error_messages["required"] = "กรุณากรอกข้อมูลในช่องนี้"
 
 
 class PublicRegistrationForm(CustomerForm):

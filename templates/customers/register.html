@@ -1,19 +1,22 @@
 {% extends "public_base.html" %}
 
+{% block title %}ลงทะเบียนลูกค้า{% endblock %}
+{% block heading %}ลงทะเบียนลูกค้า{% endblock %}
+{% block lead %}กรุณากรอกข้อมูลให้ครบถ้วนและตรวจสอบก่อนส่ง{% endblock %}
+
 {% block content %}
-<h1>ลงทะเบียนลูกค้า</h1>
-<form method="post" novalidate class="card">
+<form method="post" novalidate class="card p-5 sm:p-7">
   {% csrf_token %}
 
   {% if rate_limited %}
-  <p class="alert" role="alert">มีการส่งข้อมูลจำนวนมากเกินไป กรุณาลองใหม่อีกครั้งในภายหลัง</p>
+  <p class="alert mb-5" role="alert">มีการส่งข้อมูลจำนวนมากเกินไป กรุณาลองใหม่อีกครั้งในภายหลัง</p>
   {% endif %}
 
   {% for field in form.customer_fields %}
   <div class="field">
     <label for="{{ field.id_for_label }}">{{ field.label }}</label>
     {{ field }}
-    {% for error in field.errors %}<p class="error">{{ error }}</p>{% endfor %}
+    {% for error in field.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
   </div>
   {% endfor %}
 
@@ -23,14 +26,14 @@
     {{ form.website }}
   </div>
 
-  <div class="field">
+  <div class="mb-6 rounded-xl bg-sunken p-4">
     <label class="consent" for="{{ form.consent.id_for_label }}">
       {{ form.consent }}
       <span>{{ form.consent.label }}</span>
     </label>
-    {% for error in form.consent.errors %}<p class="error">{{ error }}</p>{% endfor %}
+    {% for error in form.consent.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
   </div>
 
-  <button type="submit">ส่งข้อมูล</button>
+  <button type="submit" class="btn btn-primary btn-block">ส่งข้อมูล</button>
 </form>
 {% endblock %}

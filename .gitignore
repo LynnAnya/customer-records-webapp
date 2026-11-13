@@ -218,3 +218,6 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Tailwind standalone program (downloaded per machine, see CLAUDE.md)
+/bin/

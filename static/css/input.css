@@ -1,0 +1,222 @@
+/* Source for the app's CSS. Build with: ./bin/tailwindcss -i static/css/input.css -o static/css/app.css --minify */
+@import "tailwindcss";
+@source "../../templates";
+@source "../../customers";
+@source "../../accounts";
+
+/* Dark mode follows the `dark` class on <html>, set by static/js/theme.js. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+@font-face {
+  font-family: "Noto Sans Thai";
+  src: url("../fonts/noto-sans-thai-thai-wght.woff2") format("woff2");
+  font-weight: 100 900;
+  font-display: swap;
+  unicode-range: U+0E01-0E5B, U+200C-200D, U+25CC;
+}
+@font-face {
+  font-family: "Noto Sans Thai";
+  src: url("../fonts/noto-sans-thai-latin-wght.woff2") format("woff2");
+  font-weight: 100 900;
+  font-display: swap;
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+/* Colour tokens, defined once. Light values here, dark values under .dark. */
+:root {
+  --page: #eef1f8;
+  --surface: #ffffff;
+  --sunken: #f4f6fb;
+  --line: #d5dbea;
+  --ink: #101a3a;
+  --muted: #55607f;
+  --accent: #2545e6;
+  --accent-strong: #1a33b8;
+  --accent-soft: #e3e8ff;
+  --on-accent: #ffffff;
+  --rail: #0f1a40;
+  --rail-ink: #c5cdea;
+  --rail-hover: #1b2a5e;
+  --signal: #ffb01f;
+  --danger: #c22a2a;
+  --danger-soft: #fde6e6;
+  --success: #12805c;
+  color-scheme: light;
+}
+.dark {
+  --page: #0a1026;
+  --surface: #131c3d;
+  --sunken: #0e1632;
+  --line: #2a3663;
+  --ink: #eef1fb;
+  --muted: #9da8cc;
+  --accent: #7d92ff;
+  --accent-strong: #a3b2ff;
+  --accent-soft: #1f2c63;
+  --on-accent: #0a1026;
+  --rail: #070c1f;
+  --rail-ink: #b3bde0;
+  --rail-hover: #162150;
+  --signal: #ffc04d;
+  --danger: #ff8f8f;
+  --danger-soft: #45191f;
+  --success: #5fd8ae;
+  color-scheme: dark;
+}
+
+@theme inline {
+  --font-sans: "Noto Sans Thai", ui-sans-serif, system-ui, sans-serif;
+  --color-page: var(--page);
+  --color-surface: var(--surface);
+  --color-sunken: var(--sunken);
+  --color-line: var(--line);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-accent: var(--accent);
+  --color-accent-strong: var(--accent-strong);
+  --color-accent-soft: var(--accent-soft);
+  --color-on-accent: var(--on-accent);
+  --color-rail: var(--rail);
+  --color-rail-ink: var(--rail-ink);
+  --color-rail-hover: var(--rail-hover);
+  --color-signal: var(--signal);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-success: var(--success);
+  --shadow-card: 0 1px 2px rgb(16 26 58 / 0.06), 0 12px 32px -12px rgb(16 26 58 / 0.22);
+}
+
+@layer base {
+  html {
+    font-family: var(--font-sans);
+    /* Thai has tall vowel and tone marks; give lines room. */
+    line-height: 1.6;
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    background: var(--page);
+    color: var(--ink);
+  }
+  :focus-visible {
+    outline: 3px solid var(--accent);
+    outline-offset: 2px;
+  }
+  [x-cloak] {
+    display: none !important;
+  }
+}
+
+/* Our own small components. */
+@layer components {
+  .card {
+    @apply rounded-2xl border border-line bg-surface shadow-card;
+  }
+
+  .btn {
+    @apply inline-flex min-h-12 cursor-pointer items-center justify-center gap-2 rounded-xl px-5 text-base font-semibold transition-colors;
+  }
+  .btn-primary {
+    @apply bg-accent text-on-accent hover:bg-accent-strong active:translate-y-px;
+  }
+  .btn-quiet {
+    @apply text-ink hover:bg-sunken;
+  }
+  .btn-block {
+    @apply w-full;
+  }
+
+  .badge {
+    @apply inline-flex items-center rounded-full bg-accent-soft px-2.5 py-0.5 text-xs font-semibold text-accent-strong;
+  }
+  .badge-signal {
+    @apply bg-signal text-[#3a2600];
+  }
+
+  .alert {
+    @apply rounded-xl bg-danger-soft px-4 py-3 text-base text-danger;
+  }
+
+  /* Form fields: Django draws the <input>, these rules style it. */
+  .field {
+    @apply mb-5;
+  }
+  .field > label {
+    @apply mb-1.5 block text-base font-semibold text-ink;
+  }
+  .field input[type="text"],
+  .field input[type="password"] {
+    @apply block min-h-12 w-full rounded-xl border border-line bg-surface px-3.5 text-lg text-ink transition-shadow;
+  }
+  .field input[type="text"]:focus,
+  .field input[type="password"]:focus {
+    @apply border-accent outline-none ring-4 ring-accent-soft;
+  }
+  .dark .field input[type="text"],
+  .dark .field input[type="password"] {
+    @apply bg-sunken;
+  }
+  .field:has(.field-error) input {
+    @apply border-danger;
+  }
+  .field-error {
+    @apply mt-1.5 text-sm font-medium text-danger;
+  }
+
+  /* Honeypot: off-screen for people, still in the page for bots. */
+  .hp {
+    @apply absolute -left-[9999px] h-px w-px overflow-hidden;
+  }
+
+  /* Sidebar and bottom-tab items. */
+  .rail-item {
+    @apply relative flex min-h-12 items-center gap-3 rounded-xl px-3.5 text-base font-medium text-rail-ink transition-colors hover:bg-rail-hover hover:text-white;
+  }
+  .rail-item[aria-current="page"] {
+    @apply bg-rail-hover text-white;
+  }
+  .rail-item[aria-current="page"]::before {
+    content: "";
+    @apply absolute top-2.5 bottom-2.5 -left-3 w-1 rounded-full bg-signal;
+  }
+  .tab-item {
+    @apply flex min-h-14 flex-1 cursor-pointer flex-col items-center justify-center gap-0.5 text-xs font-medium text-muted;
+  }
+  .tab-item[aria-current="page"] {
+    @apply text-accent;
+  }
+
+  /* Theme switch: three small buttons in one pill. */
+  .theme-switch {
+    @apply inline-flex rounded-full border border-line bg-sunken p-1;
+  }
+  .theme-switch button {
+    @apply flex size-9 cursor-pointer items-center justify-center rounded-full text-muted transition-colors hover:text-ink;
+  }
+  .theme-switch button[aria-pressed="true"] {
+    @apply bg-accent text-on-accent;
+  }
+  .theme-switch-rail {
+    @apply border-transparent bg-rail-hover;
+  }
+  .theme-switch-rail button {
+    @apply text-rail-ink hover:text-white;
+  }
+  .theme-switch-rail button[aria-pressed="true"] {
+    @apply bg-signal text-[#3a2600];
+  }
+
+  /* Consent row on the public form. */
+  .consent {
+    @apply flex cursor-pointer items-start gap-3 text-base text-ink;
+  }
+  .consent input {
+    @apply mt-0.5 size-6 flex-none cursor-pointer;
+    accent-color: var(--accent);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+  }
+}

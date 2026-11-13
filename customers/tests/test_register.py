@@ -155,3 +155,11 @@ def test_post_without_csrf_token_is_rejected() -> None:
 def test_other_http_methods_are_not_allowed(client) -> None:
     assert client.delete(REGISTER).status_code == 405
     assert client.post(THANKS).status_code == 405
+
+
+def test_error_messages_are_friendly_thai(client) -> None:
+    response = client.post(REGISTER, valid_data(first_name="", consent=""))
+
+    errors = response.context["form"].errors
+    assert errors["first_name"] == ["กรุณากรอกข้อมูลในช่องนี้"]
+    assert errors["consent"] == ["กรุณากดยินยอมก่อนส่งข้อมูล"]

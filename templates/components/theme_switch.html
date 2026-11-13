@@ -1,0 +1,6 @@
+{# Light / dark / system. The choice is kept in the browser (static/js/theme.js). #}
+<div class="theme-switch {% if tone == 'rail' %}theme-switch-rail{% endif %}" x-data="themeSwitch()" role="group" aria-label="ธีมสี">
+  <button type="button" @click="set('light')" :aria-pressed="choice === 'light'" aria-label="สว่าง" title="สว่าง">{% include "components/icon.html" with name="sun" class="size-4.5" %}</button>
+  <button type="button" @click="set('dark')" :aria-pressed="choice === 'dark'" aria-label="มืด" title="มืด">{% include "components/icon.html" with name="moon" class="size-4.5" %}</button>
+  <button type="button" @click="set('system')" :aria-pressed="choice === 'system'" aria-label="ตามอุปกรณ์" title="ตามอุปกรณ์">{% include "components/icon.html" with name="monitor" class="size-4.5" %}</button>
+</div>

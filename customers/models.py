@@ -45,3 +45,19 @@ class Customer(models.Model):
     @property
     def full_name(self) -> str:
         return f"{self.first_name} {self.last_name}".strip()
+
+
+class RegistrationAttempt(models.Model):
+    """One row per saved public registration, used only for rate limiting.
+
+    Holds no customer data. Old rows are deleted by `customers/rate_limit.py`.
+    """
+
+    ip_address = models.GenericIPAddressField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        indexes = [models.Index(fields=["ip_address", "created_at"])]
+
+    def __str__(self) -> str:
+        return f"{self.ip_address} {self.created_at:%Y-%m-%d %H:%M}"

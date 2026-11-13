@@ -1,6 +1,7 @@
 from typing import Any
 
 from django.contrib.auth.models import AbstractBaseUser
+from django.http import HttpRequest
 
 from audit.models import ActivityLog
 
@@ -35,3 +36,12 @@ def log_action(
         details=details,
         ip_address=ip_address,
     )
+
+
+def get_client_ip(request: HttpRequest) -> str:
+    """The caller's IP address.
+
+    Uses the direct connection for now. Behind Render's proxy this must read the
+    forwarded address instead (deploy step).
+    """
+    return request.META.get("REMOTE_ADDR", "")

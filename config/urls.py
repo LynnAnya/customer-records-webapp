@@ -1,5 +1,7 @@
 """URL configuration. The Django admin site is intentionally not included."""
 
-from django.urls import URLPattern, URLResolver
+from django.urls import include, path
 
-urlpatterns: list[URLPattern | URLResolver] = []
+urlpatterns = [
+    path("", include("customers.urls")),
+]

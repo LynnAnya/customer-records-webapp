@@ -62,7 +62,7 @@ ROOT_URLCONF = "config.urls"
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [],
+        "DIRS": [BASE_DIR / "templates"],
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [
@@ -86,6 +86,12 @@ DATABASES = {
 
 # Custom user model. Must be set before the first migration.
 AUTH_USER_MODEL = "accounts.User"
+
+# Public registration form: saved forms allowed per IP address per hour.
+# Generous on purpose: customers on the same Wi-Fi share one IP address.
+REGISTRATION_RATE_LIMIT_PER_HOUR = env.int(
+    "REGISTRATION_RATE_LIMIT_PER_HOUR", default=20
+)
 
 
 # Password validation

@@ -3,45 +3,154 @@
 
 {% block title %}ลูกค้า{% endblock %}
 
+{# One table row. Used for ticked (pinned) rows and for normal results. #}
+{% partialdef row %}
+<tr data-row-id="{{ customer.pk }}" class="{% if is_pinned %}is-pinned-row{% if is_last_pinned %} pinned-end{% endif %}{% elif customer.is_hidden %}is-hidden-row{% endif %}">
+  <td class="check-cell">
+    <input type="checkbox" class="row-check" {% if is_pinned %}checked{% endif %} :checked="has({{ customer.pk }})" @change="toggle({{ customer.pk }})" aria-label="เลือก {{ customer.full_name }}">
+  </td>
+  <td class="font-semibold">
+    {{ customer.full_name }}
+    {% if customer.is_hidden %}<span class="badge badge-signal ml-2 align-middle">{% include "components/icon.html" with name="eye-off" class="mr-1 size-3.5" %}ซ่อน</span>{% endif %}
+  </td>
+  <td><span class="plate">{{ customer.license_plate }}</span></td>
+  {% if show_phone %}<td class="tabular-nums">{{ customer.phone }}</td>{% endif %}
+  <td>{{ customer.bank_name }}</td>
+  <td class="tabular-nums whitespace-nowrap">{{ customer.account_number|masked }}</td>
+  <td>{{ customer.referral }}</td>
+  <td class="whitespace-nowrap text-muted" title="{{ customer.created_at|date:'j F Y H:i' }}">{{ customer.created_at|date:"j M Y" }}</td>
+</tr>
+{% endpartialdef %}
+
+{# One phone card. #}
+{% partialdef card %}
+<li data-row-id="{{ customer.pk }}" class="card p-4 {% if is_pinned %}is-pinned-row{% elif customer.is_hidden %}is-hidden-row{% endif %}">
+  <div class="flex items-start gap-3">
+    <input type="checkbox" class="row-check mt-1 size-6 flex-none" {% if is_pinned %}checked{% endif %} :checked="has({{ customer.pk }})" @change="toggle({{ customer.pk }})" aria-label="เลือก {{ customer.full_name }}">
+    <p class="flex-1 text-lg font-semibold leading-snug">{{ customer.full_name }}</p>
+    {% if customer.is_hidden %}<span class="badge badge-signal flex-none">{% include "components/icon.html" with name="eye-off" class="mr-1 size-3.5" %}ซ่อน</span>{% endif %}
+  </div>
+  <p class="mt-2 pl-9"><span class="plate">{{ customer.license_plate }}</span></p>
+  <dl class="mt-3 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 pl-9 text-base">
+    <dt class="text-muted">ธนาคาร</dt><dd>{{ customer.bank_name }}</dd>
+    <dt class="text-muted">เลขที่บัญชี</dt><dd class="tabular-nums">{{ customer.account_number|masked }}</dd>
+    {% if show_phone %}<dt class="text-muted">เบอร์โทร</dt><dd class="tabular-nums">{{ customer.phone }}</dd>{% endif %}
+    <dt class="text-muted">ผู้แนะนำ</dt><dd>{{ customer.referral }}</dd>
+    <dt class="text-muted">วันที่เพิ่ม</dt><dd>{{ customer.created_at|date:"j M Y" }}</dd>
+  </dl>
+</li>
+{% endpartialdef %}
+
 {% block content %}
+<div x-data="customerSelection()" @htmx:after-swap.window="dropInvalid()">
 <h1 class="text-3xl font-bold leading-snug">สวัสดี {{ request.user.first_name|default:request.user.username }}</h1>
 
-{# Search and sort. HTMX swaps only the table; without JavaScript the form still works. #}
+{# Search, sort and filters. HTMX swaps only the table; without JavaScript the form still works. #}
 <form id="customer-filters" method="get" action="{% url 'customer_list' %}"
       hx-get="{% url 'customer_table' %}" hx-target="#customer-table"
-      hx-trigger="input changed delay:300ms from:#q, search from:#q, change from:#sort, submit"
-      x-data
+      hx-trigger="input changed delay:300ms from:#q, search from:#q, change, submit, selection-changed from:body"
       @set-sort.window="$refs.sort.value = $event.detail; $refs.sort.dispatchEvent(new Event('change', { bubbles: true }))"
-      class="mt-6 flex flex-col gap-3 sm:flex-row">
-  <div class="relative flex-1">
-    <label for="q" class="sr-only">ค้นหาลูกค้า</label>
-    <span class="pointer-events-none absolute top-1/2 left-3.5 -translate-y-1/2 text-muted">{% include "components/icon.html" with name="search" %}</span>
-    <input id="q" name="q" type="search" value="{{ query }}" autocomplete="off"
-           placeholder="{% if show_phone %}ค้นหาชื่อ ทะเบียนรถ เบอร์โทร ธนาคาร เลขที่บัญชี ผู้แนะนำ{% else %}ค้นหาชื่อ ทะเบียนรถ ธนาคาร เลขที่บัญชี ผู้แนะนำ{% endif %}"
-           class="control w-full pl-11">
+      x-init="filtersOpen = {{ filters.active_count|yesno:'true,false' }}"
+      class="mt-6">
+  {# Ticked IDs in tick order, sent with every table request. #}
+  <input type="hidden" id="selected-ids" name="selected" :value="ids.join(',')">
+
+  <div class="flex flex-col gap-3 sm:flex-row">
+    <div class="relative flex-1">
+      <label for="q" class="sr-only">ค้นหาลูกค้า</label>
+      <span class="pointer-events-none absolute top-1/2 left-3.5 -translate-y-1/2 text-muted">{% include "components/icon.html" with name="search" %}</span>
+      <input id="q" name="q" type="search" value="{{ query }}" autocomplete="off"
+             placeholder="{% if show_phone %}ค้นหาชื่อ ทะเบียนรถ เบอร์โทร ธนาคาร เลขที่บัญชี ผู้แนะนำ{% else %}ค้นหาชื่อ ทะเบียนรถ ธนาคาร เลขที่บัญชี ผู้แนะนำ{% endif %}"
+             class="control w-full pl-11">
+    </div>
+    <div class="flex gap-3">
+      <div class="flex-1">
+        <label for="sort" class="sr-only">เรียงตาม</label>
+        <select id="sort" name="sort" x-ref="sort" class="control w-full sm:w-48">
+          {% for key, label in sort_options %}
+          <option value="{{ key }}" {% if key == sort %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <button type="button" class="control flex cursor-pointer items-center gap-2 font-semibold" @click="filtersOpen = !filtersOpen" :aria-expanded="filtersOpen" aria-controls="filter-panel">
+        {% include "components/icon.html" with name="filter" class="size-4.5" %}
+        ตัวกรอง
+        {% if filters.active_count %}<span class="badge">{{ filters.active_count }}</span>{% endif %}
+      </button>
+    </div>
   </div>
-  <div>
-    <label for="sort" class="sr-only">เรียงตาม</label>
-    <select id="sort" name="sort" x-ref="sort" class="control w-full sm:w-52">
-      {% for key, label in sort_options %}
-      <option value="{{ key }}" {% if key == sort %}selected{% endif %}>{{ label }}</option>
-      {% endfor %}
-    </select>
+
+  <div id="filter-panel" class="filter-panel" x-show="filtersOpen" {% if not filters.active_count %}x-cloak{% endif %}>
+    <div>
+      <label for="source">ที่มาของข้อมูล</label>
+      <select id="source" name="source" class="control">
+        <option value="">ทั้งหมด</option>
+        {% for value, label in source_options %}
+        <option value="{{ value }}" {% if value == filters.source %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div>
+      <label for="referral">ผู้แนะนำ</label>
+      <select id="referral" name="referral" class="control">
+        <option value="">ทั้งหมด</option>
+        {% for value in referral_options %}
+        <option value="{{ value }}" {% if value|lower == filters.referral|lower %}selected{% endif %}>{{ value }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div>
+      <label for="from">เพิ่มตั้งแต่วันที่</label>
+      <input id="from" name="from" type="date" value="{{ filters.date_from|date:'Y-m-d' }}" class="control">
+    </div>
+    <div>
+      <label for="to">ถึงวันที่</label>
+      <input id="to" name="to" type="date" value="{{ filters.date_to|date:'Y-m-d' }}" class="control">
+    </div>
+    {% if is_admin %}
+    <div>
+      <label for="hidden">การแสดงผล</label>
+      <select id="hidden" name="hidden" class="control">
+        <option value="">ทั้งหมด (รวมที่ซ่อน)</option>
+        <option value="visible" {% if filters.hidden == "visible" %}selected{% endif %}>เฉพาะที่แสดง</option>
+        <option value="hidden" {% if filters.hidden == "hidden" %}selected{% endif %}>เฉพาะที่ซ่อน</option>
+      </select>
+    </div>
+    {% endif %}
+    {% if filters.active_count %}
+    <div class="flex items-end sm:col-span-2 lg:col-span-5">
+      <a href="{% url 'customer_list' %}{% if query %}?q={{ query|urlencode }}{% endif %}" class="btn btn-quiet min-h-10 px-3 text-sm">ล้างตัวกรองทั้งหมด</a>
+    </div>
+    {% endif %}
   </div>
 </form>
 
+{# Shown while customers are ticked. Copy, PDF and hide buttons are added in later steps. #}
+<div class="selection-bar" x-show="ids.length > 0" x-cloak role="status">
+  <span class="font-semibold">เลือกแล้ว <span x-text="ids.length" class="tabular-nums"></span> ราย</span>
+  <button type="button" class="cursor-pointer rounded-lg px-3 py-1.5 font-semibold underline underline-offset-4" @click="clear()">ล้างการเลือก</button>
+</div>
+
 <div id="customer-table" class="mt-5">
 {% partialdef table inline %}
+  {# Refresh every 10 seconds, keeping search, sort, filters, page and ticks. #}
+  <div hidden hx-get="{% url 'customer_table' %}{% querystring selected=None %}" hx-trigger="every 10s [document.visibilityState === 'visible']" hx-target="#customer-table" hx-include="#selected-ids"></div>
+  {# Ticked IDs the server refused (hidden or deleted); the browser forgets them. #}
+  <div hidden id="pinned-meta" data-dropped="{{ dropped_ids }}"></div>
+
   <p class="mb-3 text-muted" aria-live="polite">
-    {% if query %}พบ {{ page.paginator.count }} รายจากคำค้น “{{ query }}”{% else %}ลูกค้าทั้งหมด {{ page.paginator.count }} ราย{% endif %}
+    {% if query or filters.active_count %}พบ {{ total_count }} ราย{% if query %}จากคำค้น “{{ query }}”{% endif %}{% else %}ลูกค้าทั้งหมด {{ total_count }} ราย{% endif %}
   </p>
 
-  {% if page.object_list %}
+  {% if page.object_list or pinned %}
   {# Desktop and tablet: table #}
   <div class="card hidden overflow-x-auto md:block">
     <table class="data-table">
       <thead>
         <tr>
+          <th scope="col" class="check-cell">
+            <input type="checkbox" class="row-check" :checked="allOnPage()" @change="togglePage($event.target.checked)" aria-label="เลือกทุกรายการในหน้านี้">
+          </th>
           <th scope="col">
             <button type="button" class="sort-btn" @click="$dispatch('set-sort', '{% if sort == 'name_az' %}name_za{% else %}name_az{% endif %}')">
               ชื่อ-นามสกุล
@@ -67,49 +176,23 @@
         </tr>
       </thead>
       <tbody>
-        {% for customer in page.object_list %}
-        <tr {% if customer.is_hidden %}class="is-hidden-row"{% endif %}>
-          <td class="font-semibold">
-            {{ customer.full_name }}
-            {% if customer.is_hidden %}<span class="badge badge-signal ml-2 align-middle">{% include "components/icon.html" with name="eye-off" class="mr-1 size-3.5" %}ซ่อน</span>{% endif %}
-          </td>
-          <td><span class="plate">{{ customer.license_plate }}</span></td>
-          {% if show_phone %}<td class="tabular-nums">{{ customer.phone }}</td>{% endif %}
-          <td>{{ customer.bank_name }}</td>
-          <td class="tabular-nums whitespace-nowrap">{{ customer.account_number|masked }}</td>
-          <td>{{ customer.referral }}</td>
-          <td class="whitespace-nowrap text-muted" title="{{ customer.created_at|date:'j F Y H:i' }}">{{ customer.created_at|date:"j M Y" }}</td>
-        </tr>
-        {% endfor %}
+        {% for customer in pinned %}{% with is_pinned=True is_last_pinned=forloop.last %}{% partial row %}{% endwith %}{% endfor %}
+        {% for customer in page.object_list %}{% partial row %}{% endfor %}
       </tbody>
     </table>
   </div>
 
   {# Phone: cards #}
   <ul class="flex flex-col gap-3 md:hidden">
-    {% for customer in page.object_list %}
-    <li class="card p-4 {% if customer.is_hidden %}is-hidden-row{% endif %}">
-      <div class="flex items-start justify-between gap-3">
-        <p class="text-lg font-semibold leading-snug">{{ customer.full_name }}</p>
-        {% if customer.is_hidden %}<span class="badge badge-signal flex-none">{% include "components/icon.html" with name="eye-off" class="mr-1 size-3.5" %}ซ่อน</span>{% endif %}
-      </div>
-      <p class="mt-2"><span class="plate">{{ customer.license_plate }}</span></p>
-      <dl class="mt-3 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-base">
-        <dt class="text-muted">ธนาคาร</dt><dd>{{ customer.bank_name }}</dd>
-        <dt class="text-muted">เลขที่บัญชี</dt><dd class="tabular-nums">{{ customer.account_number|masked }}</dd>
-        {% if show_phone %}<dt class="text-muted">เบอร์โทร</dt><dd class="tabular-nums">{{ customer.phone }}</dd>{% endif %}
-        <dt class="text-muted">ผู้แนะนำ</dt><dd>{{ customer.referral }}</dd>
-        <dt class="text-muted">วันที่เพิ่ม</dt><dd>{{ customer.created_at|date:"j M Y" }}</dd>
-      </dl>
-    </li>
-    {% endfor %}
+    {% for customer in pinned %}{% with is_pinned=True %}{% partial card %}{% endwith %}{% endfor %}
+    {% for customer in page.object_list %}{% partial card %}{% endfor %}
   </ul>
 
   {% if page.paginator.num_pages > 1 %}
   <nav class="mt-5 flex items-center justify-center gap-1.5" aria-label="เปลี่ยนหน้า">
     {% if page.has_previous %}
-    <a class="page-btn" aria-label="หน้าแรก" href="{% url 'customer_list' %}{% querystring page=1 %}" hx-get="{% url 'customer_table' %}{% querystring page=1 %}" hx-target="#customer-table" hx-swap="innerHTML show:#customer-filters:top">{% include "components/icon.html" with name="chevrons-left" %}</a>
-    <a class="page-btn" aria-label="หน้าก่อนหน้า" href="{% url 'customer_list' %}{% querystring page=page.previous_page_number %}" hx-get="{% url 'customer_table' %}{% querystring page=page.previous_page_number %}" hx-target="#customer-table" hx-swap="innerHTML show:#customer-filters:top">{% include "components/icon.html" with name="chevron-left" %}</a>
+    <a class="page-btn" aria-label="หน้าแรก" href="{% url 'customer_list' %}{% querystring page=1 selected=None %}" hx-get="{% url 'customer_table' %}{% querystring page=1 selected=None %}" hx-include="#selected-ids" hx-target="#customer-table" hx-swap="innerHTML show:#customer-filters:top">{% include "components/icon.html" with name="chevrons-left" %}</a>
+    <a class="page-btn" aria-label="หน้าก่อนหน้า" href="{% url 'customer_list' %}{% querystring page=page.previous_page_number selected=None %}" hx-get="{% url 'customer_table' %}{% querystring page=page.previous_page_number selected=None %}" hx-include="#selected-ids" hx-target="#customer-table" hx-swap="innerHTML show:#customer-filters:top">{% include "components/icon.html" with name="chevron-left" %}</a>
     {% else %}
     <span class="page-btn" aria-disabled="true">{% include "components/icon.html" with name="chevrons-left" %}</span>
     <span class="page-btn" aria-disabled="true">{% include "components/icon.html" with name="chevron-left" %}</span>
@@ -118,8 +201,8 @@
     <span class="px-3 font-semibold tabular-nums">หน้า {{ page.number }} / {{ page.paginator.num_pages }}</span>
 
     {% if page.has_next %}
-    <a class="page-btn" aria-label="หน้าถัดไป" href="{% url 'customer_list' %}{% querystring page=page.next_page_number %}" hx-get="{% url 'customer_table' %}{% querystring page=page.next_page_number %}" hx-target="#customer-table" hx-swap="innerHTML show:#customer-filters:top">{% include "components/icon.html" with name="chevron-right" %}</a>
-    <a class="page-btn" aria-label="หน้าสุดท้าย" href="{% url 'customer_list' %}{% querystring page=page.paginator.num_pages %}" hx-get="{% url 'customer_table' %}{% querystring page=page.paginator.num_pages %}" hx-target="#customer-table" hx-swap="innerHTML show:#customer-filters:top">{% include "components/icon.html" with name="chevrons-right" %}</a>
+    <a class="page-btn" aria-label="หน้าถัดไป" href="{% url 'customer_list' %}{% querystring page=page.next_page_number selected=None %}" hx-get="{% url 'customer_table' %}{% querystring page=page.next_page_number selected=None %}" hx-include="#selected-ids" hx-target="#customer-table" hx-swap="innerHTML show:#customer-filters:top">{% include "components/icon.html" with name="chevron-right" %}</a>
+    <a class="page-btn" aria-label="หน้าสุดท้าย" href="{% url 'customer_list' %}{% querystring page=page.paginator.num_pages selected=None %}" hx-get="{% url 'customer_table' %}{% querystring page=page.paginator.num_pages selected=None %}" hx-include="#selected-ids" hx-target="#customer-table" hx-swap="innerHTML show:#customer-filters:top">{% include "components/icon.html" with name="chevrons-right" %}</a>
     {% else %}
     <span class="page-btn" aria-disabled="true">{% include "components/icon.html" with name="chevron-right" %}</span>
     <span class="page-btn" aria-disabled="true">{% include "components/icon.html" with name="chevrons-right" %}</span>
@@ -129,9 +212,9 @@
 
   {% else %}
   <div class="card px-6 py-12 text-center">
-    {% if query %}
-    <p class="text-lg font-semibold">ไม่พบลูกค้าที่ตรงกับ “{{ query }}”</p>
-    <p class="mt-1 text-muted">ลองตรวจสอบตัวสะกด หรือค้นหาด้วยคำที่สั้นลง</p>
+    {% if query or filters.active_count %}
+    <p class="text-lg font-semibold">ไม่พบลูกค้าที่ตรงกับเงื่อนไข</p>
+    <p class="mt-1 text-muted">ลองตรวจสอบตัวสะกด ใช้คำที่สั้นลง หรือล้างตัวกรอง</p>
     {% else %}
     <p class="text-lg font-semibold">ยังไม่มีลูกค้า</p>
     <p class="mt-1 text-muted">เมื่อลูกค้าลงทะเบียนผ่าน QR code รายชื่อจะแสดงที่นี่</p>
@@ -139,5 +222,6 @@
   </div>
   {% endif %}
 {% endpartialdef %}
+</div>
 </div>
 {% endblock %}

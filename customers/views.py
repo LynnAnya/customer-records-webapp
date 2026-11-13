@@ -9,13 +9,27 @@ from django.utils import timezone
 from django.views.decorators.http import require_GET, require_http_methods
 
 from audit.services import get_client_ip
+from customers.filters import parse_filters, parse_selected_ids, referral_choices
 from customers.forms import PublicRegistrationForm
 from customers.models import Customer
-from customers.queries import DEFAULT_SORT, clean_sort, search_customers
+from customers.queries import (
+    DEFAULT_SORT,
+    clean_sort,
+    pinned_customers,
+    search_customers,
+    visible_customers,
+)
 from customers.rate_limit import is_rate_limited, record_attempt
 from customers.visibility import can_see_phone
 
 PAGE_SIZE = 25
+
+# "Added by" filter: (stored value, Thai label).
+SOURCE_OPTIONS = [
+    (Customer.CreatedBy.QR_CODE.value, "ลงทะเบียนผ่าน QR code"),
+    (Customer.CreatedBy.ADMIN.value, "ผู้ดูแลระบบเพิ่ม"),
+    (Customer.CreatedBy.EXCEL.value, "นำเข้าจาก Excel"),
+]
 
 # Sort dropdown: (key, Thai label). Keys must exist in customers.queries.SORTS.
 SORT_OPTIONS = [
@@ -65,25 +79,41 @@ def register_thanks(request: HttpRequest) -> HttpResponse:
 
 
 def _table_context(request: HttpRequest) -> dict:
-    """Read search, sort and page from the URL and build the table data."""
+    """Read search, sort, filters, page and ticked IDs from the URL."""
+    user = request.user
     query = request.GET.get("q", "").strip()
     sort = clean_sort(request.GET.get("sort"))
-    customers = search_customers(request.user, query, sort)
-    page = Paginator(customers, PAGE_SIZE).get_page(request.GET.get("page"))
+    filters = parse_filters(request.GET, user)
 
-    # Query string that keeps the current search and sort in every link.
+    # Ticked rows come first, in tick order, and are left out of the results.
+    selected_ids = parse_selected_ids(request.GET.get("selected"))
+    pinned, dropped_ids = pinned_customers(user, selected_ids)
+
+    results = search_customers(user, query, sort, filters)
+    unpinned = results.exclude(pk__in=[customer.pk for customer in pinned])
+    page = Paginator(unpinned, PAGE_SIZE).get_page(request.GET.get("page"))
+
+    # Query string that keeps the current search, sort and filters in the URL.
     params = {}
     if query:
         params["q"] = query
     if sort != DEFAULT_SORT:
         params["sort"] = sort
+    params.update(filters.as_params())
     return {
         "page": page,
+        "pinned": pinned,
+        "dropped_ids": ",".join(str(pk) for pk in dropped_ids),
+        "total_count": results.count(),
         "query": query,
         "sort": sort,
         "sort_options": SORT_OPTIONS,
+        "filters": filters,
+        "source_options": SOURCE_OPTIONS,
+        "referral_options": referral_choices(visible_customers(user)),
         "state_query": urlencode(params),
-        "show_phone": can_see_phone(request.user),
+        "show_phone": can_see_phone(user),
+        "is_admin": user.is_admin,
     }
 
 

@@ -231,6 +231,35 @@
   .data-table tbody tr {
     @apply transition-colors hover:bg-sunken;
   }
+  .data-table .check-cell {
+    @apply w-12 pr-0;
+  }
+  .row-check {
+    @apply block size-5 cursor-pointer;
+    accent-color: var(--accent);
+  }
+  /* Ticked rows, pinned above the results. */
+  .is-pinned-row,
+  .data-table tbody tr.is-pinned-row:hover {
+    @apply bg-accent-soft;
+  }
+  .pinned-end td {
+    @apply border-b-2 border-accent;
+  }
+
+  /* Bar that appears while customers are ticked. */
+  .selection-bar {
+    @apply sticky top-14 z-10 mt-4 flex items-center justify-between gap-3 rounded-2xl bg-accent px-4 py-2.5 text-on-accent shadow-card lg:top-3;
+  }
+  .filter-panel {
+    @apply mt-3 grid gap-4 rounded-2xl border border-line bg-surface p-4 shadow-card sm:grid-cols-2 lg:grid-cols-5;
+  }
+  .filter-panel label {
+    @apply mb-1 block text-sm font-semibold text-muted;
+  }
+  .filter-panel .control {
+    @apply w-full shadow-none;
+  }
   .is-hidden-row {
     @apply bg-signal/8;
   }
@@ -240,7 +269,7 @@
 
   /* License plate: white plate, dark letters, in both themes (like the real thing). */
   .plate {
-    @apply inline-block rounded-md border-2 border-[#1c2440] bg-white px-2 py-0.5 text-sm leading-snug font-bold text-[#1c2440];
+    @apply inline-block whitespace-nowrap rounded-md border-2 border-[#1c2440] bg-white px-2 py-0.5 text-sm leading-snug font-bold text-[#1c2440];
   }
 
   .page-btn {

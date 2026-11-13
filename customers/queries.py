@@ -2,6 +2,7 @@ from django.contrib.auth.models import AbstractBaseUser, AnonymousUser
 from django.db.models import Q, QuerySet
 from django.db.models.functions import Collate
 
+from customers.filters import CustomerFilters, apply_filters
 from customers.models import Customer
 from customers.visibility import visible_fields
 
@@ -46,14 +47,19 @@ def clean_sort(sort: str | None) -> str:
 
 
 def search_customers(
-    user: AbstractBaseUser | AnonymousUser, query: str = "", sort: str | None = None
+    user: AbstractBaseUser | AnonymousUser,
+    query: str = "",
+    sort: str | None = None,
+    filters: CustomerFilters | None = None,
 ) -> QuerySet[Customer]:
-    """Customers this user may see, filtered by the search text and sorted.
+    """Customers this user may see, filtered by search text and filters, sorted.
 
     Every word must match at least one field the user may see. Phone is only in
     that list for admins, so a staff search can never match on phone.
     """
     customers = visible_customers(user)
+    if filters:
+        customers = apply_filters(customers, filters)
     fields = visible_fields(user)
     for word in query.split():
         matches_word = Q()
@@ -61,3 +67,17 @@ def search_customers(
             matches_word |= Q(**{f"{field}__icontains": word})
         customers = customers.filter(matches_word)
     return customers.order_by(*SORTS[clean_sort(sort)])
+
+
+def pinned_customers(
+    user: AbstractBaseUser | AnonymousUser, ids: list[int]
+) -> tuple[list[Customer], list[int]]:
+    """Ticked customers in tick order, plus the IDs this user may not see.
+
+    IDs from the browser are never trusted: each one is looked up through
+    `visible_customers(user)`, so hidden or deleted customers are dropped.
+    """
+    by_id = visible_customers(user).in_bulk(ids)
+    pinned = [by_id[pk] for pk in ids if pk in by_id]
+    dropped = [pk for pk in ids if pk not in by_id]
+    return pinned, dropped

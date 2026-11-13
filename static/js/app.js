@@ -77,4 +77,85 @@
       },
     };
   };
+
+  // Ticked customers on the customers page (Alpine): x-data="customerSelection()"
+  // The ordered list of IDs lives here, outside the part HTMX swaps, and is kept
+  // for this browser tab only (sessionStorage).
+  window.customerSelection = function () {
+    var saved = [];
+    try {
+      saved = JSON.parse(sessionStorage.getItem("selected") || "[]");
+    } catch (error) {
+      saved = [];
+    }
+    return {
+      ids: Array.isArray(saved) ? saved : [],
+      filtersOpen: false,
+
+      init: function () {
+        // After a page reload the server does not know the ticks yet.
+        if (this.ids.length) this.refresh();
+      },
+      has: function (id) {
+        return this.ids.indexOf(id) !== -1;
+      },
+      toggle: function (id) {
+        if (this.has(id)) {
+          this.ids = this.ids.filter(function (other) { return other !== id; });
+        } else {
+          this.ids.push(id);
+        }
+        this.changed();
+      },
+      clear: function () {
+        this.ids = [];
+        this.changed();
+      },
+      // IDs of every row now on screen (pinned rows and this page of results).
+      pageIds: function () {
+        var seen = [];
+        document.querySelectorAll("#customer-table [data-row-id]").forEach(function (row) {
+          var id = Number(row.dataset.rowId);
+          if (seen.indexOf(id) === -1) seen.push(id);
+        });
+        return seen;
+      },
+      allOnPage: function () {
+        var self = this;
+        var page = this.pageIds();
+        return page.length > 0 && page.every(function (id) { return self.has(id); });
+      },
+      togglePage: function (checked) {
+        var self = this;
+        var page = this.pageIds();
+        if (checked) {
+          page.forEach(function (id) { if (!self.has(id)) self.ids.push(id); });
+        } else {
+          this.ids = this.ids.filter(function (id) { return page.indexOf(id) === -1; });
+        }
+        this.changed();
+      },
+      // The server reports ticked IDs it would not show (hidden or deleted).
+      dropInvalid: function () {
+        var meta = document.getElementById("pinned-meta");
+        if (!meta || !meta.dataset.dropped) return;
+        var dropped = meta.dataset.dropped.split(",").map(Number);
+        this.ids = this.ids.filter(function (id) { return dropped.indexOf(id) === -1; });
+        this.save();
+      },
+      save: function () {
+        sessionStorage.setItem("selected", JSON.stringify(this.ids));
+      },
+      changed: function () {
+        this.save();
+        this.refresh();
+      },
+      refresh: function () {
+        // Wait one tick so the hidden "selected" input holds the new list.
+        this.$nextTick(function () {
+          document.body.dispatchEvent(new CustomEvent("selection-changed"));
+        });
+      },
+    };
+  };
 })();

@@ -1,0 +1,271 @@
+"""Customers page: filters, tick-to-pin selection, polling. All data is fake."""
+
+from datetime import timedelta
+
+import pytest
+from django.http import QueryDict
+from django.urls import reverse
+from django.utils import timezone
+
+from customers.filters import parse_filters, parse_selected_ids, referral_choices
+from customers.models import Customer
+from customers.queries import pinned_customers, search_customers, visible_customers
+
+LIST = reverse("customer_list")
+TABLE = reverse("customer_table")
+
+
+def names(customers) -> list[str]:
+    return [customer.first_name for customer in customers]
+
+
+@pytest.fixture
+def params():
+    def _build(**values) -> QueryDict:
+        query = QueryDict(mutable=True)
+        query.update(values)
+        return query
+
+    return _build
+
+
+# --- Filters --------------------------------------------------------------
+
+
+def test_filter_by_source(staff, make_customer, params) -> None:
+    make_customer(first_name="qr", created_by=Customer.CreatedBy.QR_CODE)
+    make_customer(first_name="excel", created_by=Customer.CreatedBy.EXCEL)
+
+    filters = parse_filters(params(source="excel"), staff)
+
+    assert names(search_customers(staff, filters=filters)) == ["excel"]
+
+
+def test_filter_by_referral_ignores_letter_case(staff, make_customer, params) -> None:
+    make_customer(first_name="a", referral="Facebook")
+    make_customer(first_name="b", referral="facebook")
+    make_customer(first_name="c", referral="คุณสมศรี")
+
+    filters = parse_filters(params(referral="FACEBOOK"), staff)
+
+    assert names(search_customers(staff, sort="oldest", filters=filters)) == ["a", "b"]
+
+
+def test_filter_by_date_range(staff, make_customer, params) -> None:
+    today = timezone.localdate()
+    old = make_customer(first_name="old")
+    Customer.objects.filter(pk=old.pk).update(
+        created_at=timezone.now() - timedelta(days=10)
+    )
+    make_customer(first_name="new")
+
+    since = parse_filters(params(**{"from": str(today - timedelta(days=1))}), staff)
+    until = parse_filters(params(to=str(today - timedelta(days=5))), staff)
+
+    assert names(search_customers(staff, filters=since)) == ["new"]
+    assert names(search_customers(staff, filters=until)) == ["old"]
+
+
+def test_admin_can_filter_hidden_or_visible(admin, make_customer, params) -> None:
+    make_customer(first_name="shown")
+    make_customer(first_name="hidden", is_hidden=True)
+
+    only_hidden = parse_filters(params(hidden="hidden"), admin)
+    only_visible = parse_filters(params(hidden="visible"), admin)
+
+    assert names(search_customers(admin, filters=only_hidden)) == ["hidden"]
+    assert names(search_customers(admin, filters=only_visible)) == ["shown"]
+
+
+def test_staff_cannot_use_the_hidden_filter(
+    client, staff, make_customer, params
+) -> None:
+    make_customer(first_name="มองเห็น")
+    make_customer(first_name="ถูกซ่อน", is_hidden=True)
+    client.force_login(staff)
+
+    assert parse_filters(params(hidden="hidden"), staff).hidden == ""
+    page = client.get(TABLE, {"hidden": "hidden"}).text
+    assert "ถูกซ่อน" not in page
+    assert "มองเห็น" in page
+    assert 'name="hidden"' not in client.get(LIST).text
+
+
+@pytest.mark.parametrize(
+    "bad",
+    [
+        {"source": "phone"},
+        {"from": "not-a-date"},
+        {"to": "2026-13-45"},
+        {"hidden": "everything"},
+    ],
+)
+def test_invalid_filter_values_are_ignored(client, admin, make_customer, bad) -> None:
+    make_customer()
+    client.force_login(admin)
+
+    response = client.get(TABLE, bad)
+
+    assert response.status_code == 200
+    assert response.context["filters"].active_count == 0
+    assert len(response.context["page"].object_list) == 1
+
+
+def test_filters_combine_with_search(staff, make_customer, params) -> None:
+    make_customer(first_name="สมชาย", created_by=Customer.CreatedBy.QR_CODE)
+    make_customer(first_name="สมชาย", created_by=Customer.CreatedBy.EXCEL)
+
+    filters = parse_filters(params(source="qr_code"), staff)
+
+    assert search_customers(staff, "สมชาย", filters=filters).count() == 1
+
+
+def test_referral_dropdown_lists_each_spelling_once(staff, make_customer) -> None:
+    make_customer(referral="Facebook")
+    make_customer(referral="facebook")
+    make_customer(referral="")
+
+    choices = referral_choices(visible_customers(staff))
+
+    assert len(choices) == 2
+    assert "บริษัท" in choices
+
+
+def test_staff_referral_dropdown_hides_referrals_of_hidden_customers(
+    admin, staff, make_customer
+) -> None:
+    make_customer(referral="ความลับ", is_hidden=True)
+
+    assert "ความลับ" not in referral_choices(visible_customers(staff))
+    assert "ความลับ" in referral_choices(visible_customers(admin))
+
+
+# --- Selection: ticked rows are pinned ------------------------------------
+
+
+def test_selected_ids_parser_keeps_order_and_drops_rubbish() -> None:
+    assert parse_selected_ids("5,2,9,2,abc,-1,,3.5, 7,٣") == [5, 2, 9]
+    assert parse_selected_ids("") == []
+    assert parse_selected_ids(None) == []
+
+
+def test_pinned_rows_come_first_in_tick_order(client, staff, make_customer) -> None:
+    a, b, c = (make_customer(first_name=name) for name in "abc")
+    client.force_login(staff)
+
+    response = client.get(TABLE, {"selected": f"{a.pk},{c.pk}"})
+
+    assert names(response.context["pinned"]) == ["a", "c"]
+    assert names(response.context["page"].object_list) == ["b"]
+    assert response.text.index(f'data-row-id="{a.pk}"') < response.text.index(
+        f'data-row-id="{b.pk}"'
+    )
+
+
+def test_pinned_rows_are_not_repeated_in_the_results(
+    client, staff, make_customer
+) -> None:
+    a = make_customer(first_name="a")
+    make_customer(first_name="b")
+    client.force_login(staff)
+
+    response = client.get(TABLE, {"selected": str(a.pk)})
+
+    all_rows = response.context["pinned"] + list(response.context["page"].object_list)
+    assert len(all_rows) == len({customer.pk for customer in all_rows}) == 2
+
+
+def test_pinned_rows_survive_a_search_that_does_not_match_them(
+    client, staff, make_customer
+) -> None:
+    pinned = make_customer(first_name="ปักหมุด")
+    make_customer(first_name="สมชาย")
+    client.force_login(staff)
+
+    response = client.get(TABLE, {"q": "สมชาย", "selected": str(pinned.pk)})
+
+    assert names(response.context["pinned"]) == ["ปักหมุด"]
+    assert names(response.context["page"].object_list) == ["สมชาย"]
+
+
+def test_pinned_rows_survive_page_changes_and_do_not_use_page_slots(
+    client, staff, make_customer
+) -> None:
+    customers = [make_customer(first_name=f"c{index:02d}") for index in range(28)]
+    pinned_ids = f"{customers[0].pk},{customers[1].pk}"
+    client.force_login(staff)
+
+    first = client.get(TABLE, {"selected": pinned_ids})
+    second = client.get(TABLE, {"selected": pinned_ids, "page": 2})
+
+    for response in (first, second):
+        assert names(response.context["pinned"]) == ["c00", "c01"]
+    assert len(first.context["page"].object_list) == 25
+    assert len(second.context["page"].object_list) == 1
+
+
+def test_staff_cannot_pin_a_hidden_customer(
+    client, staff, admin, make_customer
+) -> None:
+    hidden = make_customer(first_name="ถูกซ่อน", is_hidden=True)
+    client.force_login(staff)
+
+    response = client.get(TABLE, {"selected": f"{hidden.pk},999999"})
+
+    assert response.context["pinned"] == []
+    assert "ถูกซ่อน" not in response.text
+    assert f'data-dropped="{hidden.pk},999999"' in response.text
+    assert names(pinned_customers(admin, [hidden.pk])[0]) == ["ถูกซ่อน"]
+
+
+def test_unticking_puts_the_row_back_in_the_results(
+    client, staff, make_customer
+) -> None:
+    a = make_customer(first_name="a")
+    client.force_login(staff)
+
+    response = client.get(TABLE, {"selected": ""})
+
+    assert response.context["pinned"] == []
+    assert names(response.context["page"].object_list) == ["a"]
+    assert Customer.objects.filter(pk=a.pk).exists()
+
+
+# --- Polling keeps the user's state ---------------------------------------
+
+
+def test_polling_url_keeps_search_sort_filters_and_page(
+    client, staff, make_customer
+) -> None:
+    for index in range(27):
+        make_customer(first_name=f"สมชาย{index}", created_by=Customer.CreatedBy.EXCEL)
+    client.force_login(staff)
+
+    state = {
+        "q": "สมชาย",
+        "sort": "name_az",
+        "source": "excel",
+        "page": 2,
+        "selected": "1",
+    }
+    page = client.get(TABLE, state).text
+
+    assert 'hx-trigger="every 10s' in page
+    poll_url = page.split('hx-get="')[1].split('"')[0]
+    for part in ("sort=name_az", "source=excel", "page=2", "q="):
+        assert part in poll_url
+    # Ticked IDs are sent from the browser's own list, not copied into URLs.
+    assert "selected" not in poll_url
+    assert 'hx-include="#selected-ids"' in page
+
+
+def test_address_bar_url_never_contains_selected_ids(
+    client, staff, make_customer
+) -> None:
+    a = make_customer()
+    client.force_login(staff)
+
+    response = client.get(TABLE, {"selected": str(a.pk), "source": "admin"})
+
+    assert "selected" not in response["HX-Push-Url"]
+    assert "source=admin" in response["HX-Push-Url"]

@@ -50,11 +50,11 @@
     <label for="to">ถึงวันที่</label>
     <input id="to" name="to" type="date" value="{{ filters.date_to|date:'Y-m-d' }}" class="control">
   </div>
-  {# Always here: clears every filter without a page reload. #}
-  <div class="sm:col-span-2 lg:col-span-4">
-    <button type="button" class="btn btn-outline min-h-10 px-3 text-sm" :disabled="!active"
+  {# Shown only while at least one filter is set: clears them all without a page reload. #}
+  <div class="sm:col-span-2 lg:col-span-4" x-show="active" {% if not filters.active_count %}x-cloak{% endif %}>
+    <button type="button" class="btn btn-outline min-h-10 px-3 text-sm"
             @click="names.forEach(n => $el.closest('form').elements[n].value = ''); $el.closest('form').elements.user.dispatchEvent(new Event('change', { bubbles: true }))">
-      {% include "components/icon.html" with name="x" class="size-4" %}รีเซ็ตตัวกรอง<span x-show="active" x-cloak>&nbsp;(<span x-text="active"></span>)</span>
+      {% include "components/icon.html" with name="x" class="size-4" %}รีเซ็ตตัวกรอง&nbsp;(<span x-text="active">{{ filters.active_count }}</span>)
     </button>
   </div>
 </form>

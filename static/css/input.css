@@ -287,7 +287,7 @@
   }
   /* Row actions stay in view when a narrow screen scrolls the table sideways. */
   .data-table .actions-cell {
-    @apply sticky right-0 pr-2 pl-1 text-right whitespace-nowrap;
+    @apply sticky right-0 px-2 text-center whitespace-nowrap;
     background: inherit;
   }
   .data-table th.actions-cell {

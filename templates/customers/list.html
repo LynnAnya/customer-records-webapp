@@ -161,10 +161,10 @@
       </select>
     </div>
     {% endif %}
-    {# Always here: clears every filter (search and sort stay) without a page reload. #}
-    <div class="flex items-end sm:col-span-2 lg:col-span-5">
-      <button type="button" class="btn btn-outline min-h-10 px-3 text-sm" :disabled="!activeFilters" @click="resetFilters($el.closest('form'))">
-        {% include "components/icon.html" with name="x" class="size-4" %}รีเซ็ตตัวกรอง<span x-show="activeFilters" x-cloak>&nbsp;(<span x-text="activeFilters"></span>)</span>
+    {# Shown only while at least one filter is set: clears them all (search and sort stay) without a page reload. #}
+    <div class="flex items-end sm:col-span-2 lg:col-span-5" x-show="activeFilters" {% if not filters.active_count %}x-cloak{% endif %}>
+      <button type="button" class="btn btn-outline min-h-10 px-3 text-sm" @click="resetFilters($el.closest('form'))">
+        {% include "components/icon.html" with name="x" class="size-4" %}รีเซ็ตตัวกรอง&nbsp;(<span x-text="activeFilters">{{ filters.active_count }}</span>)
       </button>
     </div>
   </div>

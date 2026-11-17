@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% load audit_format %}
+
+{% block title %}รายละเอียดกิจกรรม{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl">
+  <a href="{{ back_url }}" class="inline-flex min-h-10 items-center gap-1 font-semibold text-accent">{% include "components/icon.html" with name="chevron-left" class="size-4" %}กลับไปบันทึกกิจกรรม</a>
+  <h1 class="mt-2 text-3xl font-bold leading-snug">{{ entry.action|action_label }}</h1>
+  <p class="mt-1 text-muted">{{ entry.created_at|date:"j F Y H:i:s" }} ({{ entry.created_at|ago }})</p>
+
+  <dl class="card mt-5 overflow-hidden">
+    <div class="info-row"><dt>ผู้ใช้</dt><dd>{{ entry.username|default:"-" }}{% if entry.user and entry.user.get_full_name %} <span class="text-muted">({{ entry.user.get_full_name }})</span>{% endif %}</dd></div>
+    <div class="info-row"><dt>การกระทำ</dt><dd><span class="badge {% if entry.action|is_alert %}badge-danger{% endif %}">{{ entry.action|action_label }}</span></dd></div>
+    {% if entry.details.count %}<div class="info-row"><dt>จำนวน</dt><dd class="tabular-nums">{{ entry.details.count }} ราย</dd></div>{% endif %}
+    {% if entry.details.target_username %}<div class="info-row"><dt>บัญชีที่เกี่ยวข้อง</dt><dd>{% if entry.details.previous_username %}{{ entry.details.previous_username }} → {% endif %}{{ entry.details.target_username }}</dd></div>{% endif %}
+    <div class="info-row"><dt>IP</dt><dd class="tabular-nums">{{ entry.ip_address|default:"-" }}</dd></div>
+    <div class="info-row"><dt>รหัสรายการ</dt><dd class="tabular-nums">{{ entry.pk }}</dd></div>
+  </dl>
+
+  {% if entry.details.customer_names %}
+  <h2 class="mt-7 text-xl font-bold">ลูกค้าในรายการนี้ ({{ entry.details.customer_names|length }} ราย)</h2>
+  <ol class="card mt-3 divide-y divide-line">
+    {% for name in entry.details.customer_names %}
+    <li class="flex gap-3 px-5 py-3"><span class="w-8 flex-none text-right text-muted tabular-nums">{{ forloop.counter }}.</span><span>{{ name }}</span></li>
+    {% endfor %}
+  </ol>
+  <p class="mt-2 text-sm text-muted">ชื่อถูกบันทึกไว้ ณ เวลาที่ทำรายการ จึงยังแสดงอยู่แม้ลูกค้าถูกลบหรือแก้ชื่อภายหลัง</p>
+  {% endif %}
+</div>
+{% endblock %}

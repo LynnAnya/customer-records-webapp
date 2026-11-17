@@ -41,16 +41,18 @@ def action_label(action: str) -> str:
     return ACTION_LABELS.get(action, action)
 
 
-def describe_details(details: dict) -> str:
+def describe_details(details: dict, max_names: int | None = MAX_NAMES_SHOWN) -> str:
     """One readable line from a log row's details, for example
-    'สมชาย ใจดี, มานี มีนา (2 ราย)'. Empty when there is nothing to say."""
+    'สมชาย ใจดี, มานี มีนา (2 ราย)'. Empty when there is nothing to say.
+    `max_names=None` lists every name (detail page and CSV)."""
     parts: list[str] = []
     names = details.get("customer_names") or []
     count = details.get("count") or len(names)
     if names:
-        shown = ", ".join(str(name) for name in names[:MAX_NAMES_SHOWN])
-        if count > MAX_NAMES_SHOWN:
-            shown += f" และอีก {count - MAX_NAMES_SHOWN} ราย"
+        limit = len(names) if max_names is None else max_names
+        shown = ", ".join(str(name) for name in names[:limit])
+        if count > limit:
+            shown += f" และอีก {count - limit} ราย"
         parts.append(shown)
     if count > 1 or (count and not names):
         parts.append(f"({count} ราย)")

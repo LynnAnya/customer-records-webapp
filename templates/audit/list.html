@@ -4,8 +4,20 @@
 {% block title %}บันทึกกิจกรรม{% endblock %}
 
 {% block content %}
-<h1 class="text-3xl font-bold leading-snug">บันทึกกิจกรรม</h1>
-<p class="mt-1 text-muted">ใครทำอะไร เมื่อไร ดูได้อย่างเดียว แก้ไขหรือลบไม่ได้</p>
+<div class="flex flex-wrap items-start justify-between gap-4">
+  <div>
+    <h1 class="text-3xl font-bold leading-snug">บันทึกกิจกรรม</h1>
+    <p class="mt-1 text-muted">ใครทำอะไร เมื่อไร ดูได้อย่างเดียว แก้ไขหรือลบไม่ได้</p>
+  </div>
+  {# CSV download. The current filters are copied in when the form is sent. #}
+  <form method="post" action="{% url 'activity_log_export' %}" class="flex flex-wrap gap-2"
+        @submit="['user', 'action', 'from', 'to'].forEach(n => $el.elements[n].value = document.getElementById('log-filters').elements[n].value)" x-data>
+    {% csrf_token %}
+    <input type="hidden" name="user"><input type="hidden" name="action"><input type="hidden" name="from"><input type="hidden" name="to">
+    <button type="submit" name="scope" value="filtered" class="btn btn-outline">{% include "components/icon.html" with name="file-down" class="size-4.5" %}ดาวน์โหลด CSV ตามตัวกรอง</button>
+    <button type="submit" name="scope" value="all" class="btn btn-outline">{% include "components/icon.html" with name="file-down" class="size-4.5" %}ดาวน์โหลดทั้งหมด</button>
+  </form>
+</div>
 
 <form id="log-filters" method="get" action="{% url 'activity_log' %}"
       hx-get="{% url 'activity_log_table' %}" hx-target="#log-table" hx-trigger="change, submit"
@@ -50,8 +62,12 @@
 
   <p class="mb-3 flex flex-wrap items-center justify-between gap-2 text-muted">
     <span>{% if filters.active_count %}พบ {{ page.paginator.count }} รายการ{% else %}ทั้งหมด {{ page.paginator.count }} รายการ{% endif %}</span>
-    <span class="text-sm tabular-nums">อัปเดตล่าสุด {{ updated_at|date:"H:i:s" }}</span>
+    <span class="text-sm tabular-nums">อัปเดตล่าสุด {{ updated_at|date:"j M Y H:i:s" }}</span>
   </p>
+
+  {% if archive_hint %}
+  <p class="notice-warning mb-3" role="note">บันทึกมีมากกว่า 100,000 รายการ แนะนำให้ผู้พัฒนาเก็บถาวรรายการที่เก่ากว่า 12 เดือน (คำสั่ง archive_activity_log)</p>
+  {% endif %}
 
   {% if page.object_list %}
   {# Desktop and tablet: table #}
@@ -63,6 +79,7 @@
           <th scope="col">ผู้ใช้</th>
           <th scope="col">การกระทำ</th>
           <th scope="col">รายละเอียด</th>
+          <th scope="col" class="actions-cell"><span class="sr-only">ดูรายละเอียด</span></th>
         </tr>
       </thead>
       <tbody>
@@ -75,6 +92,7 @@
           </td>
           <td><span class="badge {% if entry.action|is_alert %}badge-danger{% endif %} whitespace-nowrap">{{ entry.action|action_label }}</span></td>
           <td>{{ entry.details|describe|default:"-" }}</td>
+          <td class="actions-cell"><a class="icon-btn" href="{% url 'activity_log_detail' entry.pk %}?back={{ page_url|urlencode }}" title="ดูรายละเอียด" aria-label="ดูรายละเอียดรายการนี้">{% include "components/icon.html" with name="chevron-right" class="size-4.5" %}</a></td>
         </tr>
         {% endfor %}
       </tbody>
@@ -91,6 +109,7 @@
       </div>
       <p class="mt-2"><span class="font-semibold">{{ entry.username|default:"-" }}</span>{% if entry.user and entry.user.get_full_name %}<span class="text-muted"> ({{ entry.user.get_full_name }})</span>{% endif %}</p>
       {% if entry.details|describe %}<p class="mt-1 text-muted">{{ entry.details|describe }}</p>{% endif %}
+      <a class="mt-2 inline-flex min-h-10 items-center gap-1 font-semibold text-accent" href="{% url 'activity_log_detail' entry.pk %}?back={{ page_url|urlencode }}">ดูรายละเอียด{% include "components/icon.html" with name="chevron-right" class="size-4" %}</a>
     </li>
     {% endfor %}
   </ul>

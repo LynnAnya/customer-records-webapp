@@ -224,3 +224,8 @@ __marimo__/
 
 # Working notes for the AI assistant (kept local, not published)
 CLAUDE.md
+
+# Customer data files must never be committed
+*.xlsx
+*.xls
+*.csv

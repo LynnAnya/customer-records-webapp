@@ -298,6 +298,11 @@
   .data-table td.actions-end {
     @apply text-left;
   }
+  /* The column is only as wide as its widest row of buttons, so the centred
+     header sits over the buttons and not over empty space. */
+  .data-table th.actions-fit {
+    width: 1%;
+  }
   .data-table .check-cell {
     @apply w-12 pr-0;
   }

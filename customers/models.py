@@ -4,7 +4,6 @@ from django.core.validators import RegexValidator
 from django.db import models
 
 DEFAULT_REFERRAL = "บริษัท"
-
 digits_only = RegexValidator(r"^\d+$", "กรุณากรอกเฉพาะตัวเลข")
 
 

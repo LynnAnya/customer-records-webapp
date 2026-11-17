@@ -15,17 +15,19 @@ class NavItem:
     icon: str
     admin_only: bool = False
     tab_label: str = ""  # shorter text for the phone tab bar
+    in_tabs: bool = True  # False: only in the sidebar / hamburger menu
 
     @property
     def short_label(self) -> str:
         return self.tab_label or self.label
 
 
-# Add an item here when its page is built (staff).
 # ตั้งค่า and ออกจากระบบ are not page links; they live in templates/base.html.
 NAV_ITEMS: tuple[NavItem, ...] = (
     NavItem(label="ลูกค้า", url_name="customer_list", icon="users"),
-    NavItem(label="บัญชีผู้ใช้", url_name="account", icon="circle-user", tab_label="บัญชี"),
+    NavItem(label="พนักงาน", url_name="staff_list", icon="id-card", admin_only=True),
+    # Not in the phone tab bar, to keep it at five items.
+    NavItem(label="บัญชีผู้ใช้", url_name="account", icon="circle-user", in_tabs=False),
     NavItem(
         label="บันทึกกิจกรรม",
         url_name="activity_log",

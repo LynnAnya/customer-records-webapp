@@ -57,6 +57,10 @@
             <span x-show="theme === 'system'" class="ml-auto">{% include "components/icon.html" with name="check" class="size-4.5" %}</span>
           </button>
         </div>
+        <a href="{% url 'password_change' %}" class="rail-item rail-sub" {% if request.resolver_match.url_name == "password_change" %}aria-current="page"{% endif %}>
+          {% include "components/icon.html" with name="lock" class="size-4.5" %}
+          <span>เปลี่ยนรหัสผ่าน</span>
+        </a>
       </div>
     </nav>
 
@@ -98,12 +102,12 @@
 
   {# Mobile: bottom tab bar #}
   <nav class="fixed inset-x-0 bottom-0 z-20 flex border-t border-line bg-surface pb-[env(safe-area-inset-bottom)] lg:hidden" aria-label="เมนูลัด">
-    {% for item in nav_items %}
+    {% for item in nav_items %}{% if item.in_tabs %}
     <a href="{% url item.url_name %}" class="tab-item" {% if request.resolver_match.url_name == item.url_name %}aria-current="page"{% endif %}>
       {% include "components/icon.html" with name=item.icon class="size-6" %}
       {{ item.short_label }}
     </a>
-    {% endfor %}
+    {% endif %}{% endfor %}
     <button type="button" class="tab-item" @click="openSettingsDrawer()">
       {% include "components/icon.html" with name="settings" class="size-6" %}
       ตั้งค่า

@@ -1,7 +1,7 @@
 from django.contrib.auth.views import LoginView, LogoutView
 from django.urls import path
 
-from accounts import views
+from accounts import views, views_staff
 
 urlpatterns = [
     path(
@@ -14,4 +14,16 @@ urlpatterns = [
     # LogoutView only accepts POST.
     path("logout/", LogoutView.as_view(), name="logout"),
     path("account/", views.account, name="account"),
+    path("account/password/", views.password_change, name="password_change"),
+    # Admin only
+    path("staff/", views_staff.staff_list, name="staff_list"),
+    path("staff/new/", views_staff.staff_create, name="staff_create"),
+    path(
+        "staff/<int:pk>/password/",
+        views_staff.staff_reset_password,
+        name="staff_reset_password",
+    ),
+    path(
+        "staff/<int:pk>/active/", views_staff.staff_set_active, name="staff_set_active"
+    ),
 ]

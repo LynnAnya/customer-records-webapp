@@ -14,4 +14,6 @@
   <div class="info-row"><dt>เข้าสู่ระบบล่าสุด</dt><dd>{{ request.user.last_login|date:"j M Y H:i"|default:"-" }}</dd></div>
   <div class="info-row"><dt>สร้างบัญชีเมื่อ</dt><dd>{{ request.user.date_joined|date:"j M Y H:i" }}</dd></div>
 </dl>
+
+<a href="{% url 'password_change' %}" class="btn btn-outline mt-5">{% include "components/icon.html" with name="lock" class="size-4.5" %}เปลี่ยนรหัสผ่าน</a>
 {% endblock %}

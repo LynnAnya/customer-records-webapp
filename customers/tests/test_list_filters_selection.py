@@ -46,19 +46,29 @@ def test_filter_by_source(staff, make_customer, params) -> None:
     assert names(search_customers(staff, filters=filters)) == ["excel"]
 
 
-def test_name_filter_matches_the_start_only(staff, make_customer, params) -> None:
-    make_customer(name="ทองดี มีสุข")
-    make_customer(name="สมทรง ใจดี")  # has ท, but not at the start
-    make_customer(name="เทพ ทองคำ")  # starts with เ (first written letter)
-    make_customer(name="Tom Smith")
+def test_name_filter_follows_the_first_consonant(staff, make_customer, params) -> None:
+    for name in ("นก", "นนทรี", "เนเน่", "แน่น", "โน้ต", "ไก่", "สมนึก", "Nok"):
+        make_customer(name=name)
 
     def found(value: str) -> list[str]:
         filters = parse_filters(params(name=value), staff)
-        return names(search_customers(staff, filters=filters))
+        return names(search_customers(staff, sort="name_az", filters=filters))
 
-    assert found("ท") == ["ทองดี มีสุข"]
-    assert found("เท") == ["เทพ ทองคำ"]
-    assert found("tom") == ["Tom Smith"]  # any letter case
+    # Same grouping and order as the Thai dictionary sort.
+    assert found("น") == ["นก", "นนทรี", "เนเน่", "แน่น", "โน้ต"]
+    assert found("นน") == ["นนทรี"]
+    assert found("เน") == ["เนเน่"]  # typed with a vowel: matched as typed
+    assert found("ก") == ["ไก่"]
+    assert found("nok") == ["Nok"]  # any letter case
+
+
+def test_name_filter_treats_symbols_as_plain_text(staff, make_customer, params) -> None:
+    make_customer(name="a.b")
+    make_customer(name="axb")
+
+    filters = parse_filters(params(name="a."), staff)
+
+    assert names(search_customers(staff, filters=filters)) == ["a.b"]
 
 
 def test_plate_filter_matches_anywhere_in_the_plate(

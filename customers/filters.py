@@ -1,10 +1,11 @@
 """Filters and selected IDs for the customers page, read safely from the URL."""
 
+import re
 from dataclasses import dataclass
 from datetime import date
 
 from django.contrib.auth.models import AbstractBaseUser, AnonymousUser
-from django.db.models import QuerySet
+from django.db.models import Q, QuerySet
 from django.db.models.functions import Collate
 from django.http import QueryDict
 from django.utils.dateparse import parse_date
@@ -14,11 +15,14 @@ from customers.models import Customer
 MAX_SELECTED = 1000
 HIDDEN_CHOICES = ("visible", "hidden")
 MAX_TEXT = 100  # longest text accepted in a filter box
+# Thai vowels written before the consonant they belong to. Thai dictionary
+# order (our `th-x-icu` sort) skips them, so "เนเน่" sorts under น.
+LEADING_VOWELS = "เแโใไ"
 
 
 @dataclass(frozen=True)
 class CustomerFilters:
-    name: str = ""  # name starts with (first written letter, any case)
+    name: str = ""  # name starts with, by first consonant (see name_starts_with)
     plate: str = ""  # license plate contains
     bank: str = ""  # exact bank, any case (from the dropdown)
     source: str = ""  # a Customer.CreatedBy value
@@ -77,7 +81,7 @@ def apply_filters(
     customers: QuerySet[Customer], filters: CustomerFilters
 ) -> QuerySet[Customer]:
     if filters.name:
-        customers = customers.filter(name__istartswith=filters.name)
+        customers = customers.filter(name_starts_with(filters.name))
     if filters.plate:
         customers = customers.filter(license_plate__icontains=filters.plate)
     if filters.bank:
@@ -93,6 +97,19 @@ def apply_filters(
     if filters.hidden:
         customers = customers.filter(is_hidden=filters.hidden == "hidden")
     return customers
+
+
+def name_starts_with(text: str) -> Q:
+    """Names that start with `text` the way Thai dictionary order groups them.
+
+    "น" also finds "เนเน่", "แน่น" and "โน้ต" (a leading vowel is skipped), so
+    the filter agrees with the name sort. Text that itself starts with a
+    leading vowel ("เน") is matched exactly as typed. Any letter case.
+    """
+    if text[0] in LEADING_VOWELS:
+        return Q(name__istartswith=text)
+    after_vowel = f"^[{LEADING_VOWELS}]{re.escape(text)}"
+    return Q(name__istartswith=text) | Q(name__iregex=after_vowel)
 
 
 def referral_choices(customers: QuerySet[Customer]) -> list[str]:

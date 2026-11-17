@@ -18,6 +18,7 @@ urlpatterns = [
     # Admin only
     path("staff/", views_staff.staff_list, name="staff_list"),
     path("staff/new/", views_staff.staff_create, name="staff_create"),
+    path("staff/<int:pk>/edit/", views_staff.staff_edit, name="staff_edit"),
     path(
         "staff/<int:pk>/password/",
         views_staff.staff_reset_password,

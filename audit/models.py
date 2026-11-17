@@ -32,6 +32,9 @@ class ActivityLog(models.Model):
         STAFF_REACTIVATED = "staff_reactivated"
         PASSWORD_CHANGED = "password_changed"
         EXCEL_IMPORT = "excel_import"
+        STAFF_EDITED = "staff_edited"
+        LOG_EXPORTED = "log_exported"
+        LOG_ARCHIVED = "log_archived"
 
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
     # PROTECT: users are deactivated, never deleted, so history stays attributable.

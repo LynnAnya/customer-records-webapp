@@ -8,7 +8,7 @@ from audit.models import ActivityLog
 # Only these keys may go into `details`. Phone and account numbers have no key
 # here on purpose, so they cannot be logged by accident.
 ALLOWED_DETAIL_KEYS = frozenset(
-    {"customer_ids", "customer_names", "count", "target_username"}
+    {"customer_ids", "customer_names", "count", "target_username", "previous_username"}
 )
 
 

@@ -1,7 +1,6 @@
-{# Buttons for one account. `as_text` shows labelled buttons (phone cards). #}
-{% if person.pk == request.user.pk %}
-<a class="btn btn-outline min-h-10 px-3 text-sm" href="{% url 'password_change' %}">เปลี่ยนรหัสผ่านของฉัน</a>
-{% else %}
+{# Buttons for one account. Your own password is changed under ตั้งค่า, not here. #}
+<a class="btn btn-outline min-h-10 px-3 text-sm" href="{% url 'staff_edit' person.pk %}">แก้ไข</a>
+{% if person.pk != request.user.pk %}
 <a class="btn btn-outline min-h-10 px-3 text-sm" href="{% url 'staff_reset_password' person.pk %}">ตั้งรหัสผ่านใหม่</a>
 <form method="post" action="{% url 'staff_set_active' person.pk %}" class="inline">
   {% csrf_token %}

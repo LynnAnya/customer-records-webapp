@@ -2,13 +2,12 @@
 
 from django.contrib import messages
 from django.contrib.auth import get_user_model
-from django.contrib.auth.forms import SetPasswordForm
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_GET, require_http_methods, require_POST
 
 from accounts import services
-from accounts.forms import StaffCreateForm
+from accounts.forms import StaffCreateForm, StaffEditForm, ThaiSetPasswordForm
 from accounts.permissions import admin_required
 from audit.services import get_client_ip
 
@@ -40,13 +39,35 @@ def staff_create(request: HttpRequest) -> HttpResponse:
 
 @admin_required
 @require_http_methods(["GET", "POST"])
+def staff_edit(request: HttpRequest, pk: int) -> HttpResponse:
+    """Change an account's username, first name and last name."""
+    target = get_object_or_404(get_user_model(), pk=pk)
+    form = StaffEditForm(request.POST or None, instance=target)
+    if request.method == "POST" and form.is_valid():
+        if services.edit_staff(form, request.user, get_client_ip(request)):
+            messages.success(request, f"บันทึกข้อมูลบัญชี {target.get_username()} แล้ว")
+        else:
+            messages.info(request, "ไม่มีข้อมูลที่เปลี่ยนแปลง")
+        return redirect("staff_list")
+    context = {
+        "form": form,
+        "title": "แก้ไขข้อมูลบัญชี",
+        "lead": "เปลี่ยนชื่อผู้ใช้ ชื่อ หรือนามสกุล ถ้าเปลี่ยนชื่อผู้ใช้ ต้องแจ้งเจ้าของบัญชีด้วย",
+        "submit_label": "บันทึก",
+        "back_url_name": "staff_list",
+    }
+    return render(request, "accounts/form_page.html", context)
+
+
+@admin_required
+@require_http_methods(["GET", "POST"])
 def staff_reset_password(request: HttpRequest, pk: int) -> HttpResponse:
     target = get_object_or_404(get_user_model(), pk=pk)
     if target.pk == request.user.pk:
         # Your own password needs your current password: use the normal page.
         return redirect("password_change")
 
-    form = SetPasswordForm(target, request.POST or None)
+    form = ThaiSetPasswordForm(target, request.POST or None)
     if request.method == "POST" and form.is_valid():
         services.reset_password(form, request.user, get_client_ip(request))
         messages.success(request, f"ตั้งรหัสผ่านใหม่ให้ {target.get_username()} แล้ว")

@@ -58,6 +58,8 @@ def staff_admin_urls(target) -> list[tuple[str, str]]:
         ("get", reset_url(target)),
         ("post", reset_url(target)),
         ("post", active_url(target)),
+        ("get", reverse("staff_edit", args=[target.pk])),
+        ("post", reverse("staff_edit", args=[target.pk])),
     ]
 
 
@@ -409,3 +411,99 @@ def test_repeating_a_deactivation_logs_nothing_new(client, admin, staff) -> None
     client.post(active_url(staff), {"active": "0"})
 
     assert logged().count() == 1
+
+
+# --- Edit username and name -----------------------------------------------
+
+
+def edit_url(user) -> str:
+    return reverse("staff_edit", args=[user.pk])
+
+
+def test_admin_edits_username_and_name(client, admin, staff) -> None:
+    client.force_login(admin)
+
+    response = client.post(
+        edit_url(staff),
+        {"username": "nisa.k", "first_name": "นิสา", "last_name": "ใหม่"},
+    )
+
+    assert response.status_code == 302
+    staff.refresh_from_db()
+    assert (staff.username, staff.last_name) == ("nisa.k", "ใหม่")
+    assert staff.is_admin is False  # the form never touches the role
+    entry = logged().get()
+    assert entry.action == "staff_edited"
+    assert entry.details == {"target_username": "nisa.k", "previous_username": "staff1"}
+
+
+def test_saving_without_changes_logs_nothing(client, admin, staff) -> None:
+    staff.last_name = "ตัวอย่าง"
+    staff.save()
+    client.force_login(admin)
+
+    response = client.post(
+        edit_url(staff),
+        {"username": "staff1", "first_name": "นิสา", "last_name": "ตัวอย่าง"},
+    )
+
+    assert response.status_code == 302
+    assert logged().count() == 0
+
+
+def test_edit_is_admin_only(client, staff, admin) -> None:
+    client.force_login(staff)
+
+    response = client.post(
+        edit_url(admin), {"username": "x", "first_name": "x", "last_name": "x"}
+    )
+
+    assert response.status_code == 403
+    admin.refresh_from_db()
+    assert admin.username == "admin1"
+
+
+@pytest.mark.parametrize("username", ["นิสา", "nisa k", "nisa@shop", "NISA1"])
+def test_usernames_are_english_and_unique_ignoring_case(
+    client, admin, username
+) -> None:
+    User.objects.create_user(username="nisa1", password=GOOD)
+    client.force_login(admin)
+
+    response = client.post(CREATE, new_staff(username=username))
+
+    assert response.status_code == 200
+    errors = response.context["form"].errors["username"]
+    assert errors and all("ชื่อผู้ใช้" in error for error in errors)
+    assert not User.objects.filter(username=username).exists()
+
+
+def test_password_errors_and_help_are_in_thai(client, admin) -> None:
+    client.force_login(admin)
+
+    response = client.post(CREATE, new_staff(password1="12345", password2="12345"))
+
+    errors = " ".join(response.context["form"].errors["password2"])
+    assert "สั้นเกินไป" in errors
+    assert "ตัวเลขทั้งหมด" in errors
+    for english in ("too short", "too common", "entirely numeric", "didn’t match"):
+        assert english not in response.text
+
+
+def test_password_mismatch_is_in_thai(client, admin) -> None:
+    client.force_login(admin)
+
+    response = client.post(CREATE, new_staff(password2="something-else-77"))
+
+    assert response.context["form"].errors["password2"] == ["รหัสผ่านทั้งสองช่องไม่ตรงกัน"]
+
+
+def test_change_password_lives_only_under_settings(client, admin) -> None:
+    client.force_login(admin)
+
+    account_page = client.get(reverse("account")).text
+    staff_page = client.get(LIST).text
+
+    assert CHANGE not in account_page.split("<main")[-1]
+    assert "เปลี่ยนรหัสผ่านของฉัน" not in staff_page
+    assert CHANGE in account_page  # still in the ตั้งค่า menu of the frame

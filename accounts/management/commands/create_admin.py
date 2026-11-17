@@ -5,6 +5,8 @@ from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
 from django.core.management.base import BaseCommand, CommandError, CommandParser
 
+from accounts.forms import USERNAME_RULE, username_taken
+
 
 class Command(BaseCommand):
     help = "Create an admin account. The password is typed at a hidden prompt."
@@ -15,8 +17,14 @@ class Command(BaseCommand):
     def handle(self, *args, **options) -> None:
         User = get_user_model()
         username = options["username"]
-        if User.objects.filter(username=username).exists():
-            raise CommandError(f"Username '{username}' already exists.")
+        try:
+            USERNAME_RULE(username)
+        except ValidationError as error:
+            raise CommandError(
+                "Username may only use English letters, digits and . _ -"
+            ) from error
+        if username_taken(username):
+            raise CommandError(f"Username '{username}' already exists (any case).")
 
         first_name = input("First name: ").strip()
         last_name = input("Last name: ").strip()

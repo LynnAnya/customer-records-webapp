@@ -62,3 +62,21 @@ def test_create_admin_refuses_an_existing_username(prompts, staff) -> None:
 
     staff.refresh_from_db()
     assert staff.is_admin is False
+
+
+@pytest.mark.parametrize("username", ["สมชาย", "boss man"])
+def test_create_admin_needs_an_english_username(prompts, username) -> None:
+    prompts(GOOD_PASSWORD)
+
+    with pytest.raises(CommandError):
+        call_command("create_admin", username)
+
+    assert not get_user_model().objects.exists()
+
+
+def test_create_admin_refuses_a_name_that_differs_only_in_case(prompts) -> None:
+    get_user_model().objects.create_user(username="boss", password=GOOD_PASSWORD)
+    prompts(GOOD_PASSWORD)
+
+    with pytest.raises(CommandError):
+        call_command("create_admin", "Boss")

@@ -9,7 +9,7 @@ from django.contrib.auth.forms import PasswordChangeForm, SetPasswordForm
 from django.contrib.auth.models import AbstractBaseUser
 from django.db import transaction
 
-from accounts.forms import StaffCreateForm
+from accounts.forms import StaffCreateForm, StaffEditForm
 from audit.models import ActivityLog
 from audit.services import log_action
 
@@ -32,6 +32,24 @@ def create_staff(
     log_action(
         Action.STAFF_CREATED, user=actor, details=_target(user), ip_address=ip_address
     )
+    return user
+
+
+@transaction.atomic
+def edit_staff(
+    form: StaffEditForm, actor: AbstractBaseUser, ip_address: str | None
+) -> AbstractBaseUser | None:
+    """Save a new username or name. Returns None (and logs nothing) when
+    nothing changed. A renamed account keeps its history: log rows point to
+    the user, and the old username is written in this row's details."""
+    if not form.has_changed():
+        return None
+    previous = form.initial.get("username", "")
+    user = form.save()
+    details = _target(user)
+    if previous and previous != user.get_username():
+        details["previous_username"] = previous
+    log_action(Action.STAFF_EDITED, user=actor, details=details, ip_address=ip_address)
     return user
 
 

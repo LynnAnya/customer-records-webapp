@@ -26,6 +26,9 @@ ACTION_LABELS: dict[str, str] = {
     Action.STAFF_REACTIVATED: "เปิดใช้งานพนักงาน",
     Action.PASSWORD_CHANGED: "เปลี่ยนรหัสผ่าน",
     Action.EXCEL_IMPORT: "นำเข้าจาก Excel",
+    Action.STAFF_EDITED: "แก้ไขข้อมูลพนักงาน",
+    Action.LOG_EXPORTED: "ดาวน์โหลดบันทึกกิจกรรม",
+    Action.LOG_ARCHIVED: "เก็บถาวรบันทึกกิจกรรม",
 }
 
 # Actions shown in red: worth a second look.
@@ -51,7 +54,11 @@ def describe_details(details: dict) -> str:
         parts.append(shown)
     if count > 1 or (count and not names):
         parts.append(f"({count} ราย)")
-    if details.get("target_username"):
+    if details.get("previous_username"):
+        parts.append(
+            f"บัญชี {details['previous_username']} → {details['target_username']}"
+        )
+    elif details.get("target_username"):
         parts.append(f"บัญชี {details['target_username']}")
     return " ".join(parts)
 

@@ -132,19 +132,12 @@ REGISTRATION_RATE_LIMIT_PER_HOUR = env.int(
 # Password validation
 # https://docs.djangoproject.com/en/6.1/ref/settings/#auth-password-validators
 
+# Django's default rules, with Thai messages (accounts/password_validation.py).
 AUTH_PASSWORD_VALIDATORS = [
-    {
-        "NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator",  # noqa: E501
-    },
-    {
-        "NAME": "django.contrib.auth.password_validation.MinimumLengthValidator",
-    },
-    {
-        "NAME": "django.contrib.auth.password_validation.CommonPasswordValidator",
-    },
-    {
-        "NAME": "django.contrib.auth.password_validation.NumericPasswordValidator",
-    },
+    {"NAME": "accounts.password_validation.UserAttributeSimilarityValidator"},
+    {"NAME": "accounts.password_validation.MinimumLengthValidator"},
+    {"NAME": "accounts.password_validation.CommonPasswordValidator"},
+    {"NAME": "accounts.password_validation.NumericPasswordValidator"},
 ]
 
 

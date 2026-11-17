@@ -32,10 +32,10 @@
   --line: #d5dbea;
   --ink: #101a3a;
   --muted: #55607f;
-  --accent: #2d4f9e;
-  --accent-strong: #213c7c;
-  --accent-soft: #e2e8f5;
-  --on-accent: #ffffff;
+  --accent: #2d9cca;
+  --accent-strong: #1d6f94;
+  --accent-soft: #dff1f8;
+  --on-accent: #0e1a40;
   --rail: #0e1a40;
   --rail-ink: #c5cdea;
   --rail-hover: #1b2a5a;
@@ -52,9 +52,9 @@
   --line: #2a3663;
   --ink: #eef1fb;
   --muted: #9da8cc;
-  --accent: #8aa4dd;
-  --accent-strong: #b0c3ea;
-  --accent-soft: #1c2a52;
+  --accent: #5cb8dd;
+  --accent-strong: #93d2ec;
+  --accent-soft: #12334a;
   --on-accent: #0a1026;
   --rail: #0e1a40;
   --rail-ink: #b3bde0;
@@ -234,7 +234,7 @@
     @apply flex min-h-14 flex-1 cursor-pointer flex-col items-center justify-center gap-0.5 text-xs font-medium text-muted;
   }
   .tab-item[aria-current="page"] {
-    @apply text-accent;
+    @apply text-accent-strong;
   }
 
   /* Sub-menu rows inside the sidebar (ตั้งค่า > ธีม > choices). */

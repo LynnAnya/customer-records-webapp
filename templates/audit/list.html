@@ -113,7 +113,7 @@
       </div>
       <p class="mt-2"><span class="font-semibold">{{ entry.username|default:"-" }}</span>{% if entry.user and entry.user.get_full_name %}<span class="text-muted"> ({{ entry.user.get_full_name }})</span>{% endif %}</p>
       {% if entry.details|describe %}<p class="mt-1 text-muted">{{ entry.details|describe }}</p>{% endif %}
-      <a class="mt-2 inline-flex min-h-10 items-center gap-1 font-semibold text-accent" href="{% url 'activity_log_detail' entry.pk %}?back={{ page_url|urlencode }}">ดูรายละเอียด{% include "components/icon.html" with name="chevron-right" class="size-4" %}</a>
+      <a class="mt-2 inline-flex min-h-10 items-center gap-1 font-semibold text-accent-strong" href="{% url 'activity_log_detail' entry.pk %}?back={{ page_url|urlencode }}">ดูรายละเอียด{% include "components/icon.html" with name="chevron-right" class="size-4" %}</a>
     </li>
     {% endfor %}
   </ul>

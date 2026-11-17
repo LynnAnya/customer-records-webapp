@@ -2,8 +2,9 @@ import re
 
 from django import forms
 from django.core.validators import RegexValidator
+from django.utils import timezone
 
-from customers.models import Customer
+from customers.models import MISSING, Customer
 
 TEXT_INPUT = {"autocomplete": "off"}
 NUMBER_INPUT = {"inputmode": "numeric", "autocomplete": "off"}
@@ -16,14 +17,38 @@ class DigitsField(forms.CharField):
         return re.sub(r"[\s-]", "", super().to_python(value))
 
 
-class CustomerForm(forms.ModelForm):
-    """Shared customer form: the public QR page and the admin pages both use it."""
+def clean_phone_text(value: str) -> str:
+    """Phone is free text. A plain number loses its spaces and dashes
+    ("081-111 2222" -> "0811112222"); anything else is kept as typed."""
+    text = re.sub(r"\s+", " ", value).strip()
+    digits = re.sub(r"[\s-]", "", text)
+    return digits if digits.isdigit() else text
 
-    phone = DigitsField(
-        label="เบอร์โทรศัพท์",
-        validators=[RegexValidator(r"^0\d{9}$", "กรุณากรอกเบอร์โทรศัพท์ 10 หลัก ขึ้นต้นด้วย 0")],
-        widget=forms.TextInput(attrs={**NUMBER_INPUT, "inputmode": "tel"}),
-    )
+
+def is_placeholder(value: str) -> bool:
+    """True for "-", "--" and the like: a stand-in, not real data."""
+    return bool(value) and not value.replace("-", "").strip()
+
+
+PLACEHOLDER_ERROR = "กรุณากรอกข้อมูลจริง หรือพิมพ์หมายเหตุ เช่น ยังไม่มี"
+REQUIRED_ERROR = "กรุณากรอกข้อมูลในช่องนี้"
+CUSTOMER_FIELDS = [
+    "name",
+    "license_plate",
+    "phone",
+    "bank_name",
+    "account_number",
+    "referral",
+]
+
+
+class CustomerForm(forms.ModelForm):
+    """Shared customer form: the public QR page and the admin pages both use it.
+
+    Every field except referral is required, and a lone "-" is refused: "-" is
+    reserved for values missing from the old Excel file.
+    """
+
     account_number = DigitsField(
         label="เลขที่บัญชี",
         validators=[
@@ -34,26 +59,18 @@ class CustomerForm(forms.ModelForm):
 
     class Meta:
         model = Customer
-        fields = [
-            "first_name",
-            "last_name",
-            "license_plate",
-            "phone",
-            "bank_name",
-            "account_number",
-            "referral",
-        ]
+        fields = CUSTOMER_FIELDS
         labels = {
-            "first_name": "ชื่อ",
-            "last_name": "นามสกุล",
+            "name": "ชื่อ",
             "license_plate": "ทะเบียนรถ",
+            "phone": "เบอร์โทรศัพท์",
             "bank_name": "ธนาคาร",
             "referral": "ผู้แนะนำ (ถ้ามี)",
         }
         widgets = {
-            "first_name": forms.TextInput(attrs={"autocomplete": "given-name"}),
-            "last_name": forms.TextInput(attrs={"autocomplete": "family-name"}),
+            "name": forms.TextInput(attrs={"autocomplete": "name"}),
             "license_plate": forms.TextInput(attrs=TEXT_INPUT),
+            "phone": forms.TextInput(attrs={**TEXT_INPUT, "inputmode": "tel"}),
             "bank_name": forms.TextInput(attrs=TEXT_INPUT),
             "referral": forms.TextInput(attrs=TEXT_INPUT),
         }
@@ -62,8 +79,68 @@ class CustomerForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         # The model default would pre-fill the box; blank is saved as the default.
         self.fields["referral"].initial = ""
-        for name in CustomerForm.Meta.fields:
-            self.fields[name].error_messages["required"] = "กรุณากรอกข้อมูลในช่องนี้"
+        for name in CUSTOMER_FIELDS:
+            self.fields[name].error_messages["required"] = REQUIRED_ERROR
+
+    def clean_phone(self) -> str:
+        return clean_phone_text(self.cleaned_data["phone"])
+
+    def clean(self) -> dict:
+        cleaned = super().clean()
+        for name in ("name", "license_plate", "phone", "bank_name"):
+            if is_placeholder(cleaned.get(name, "")):
+                self.add_error(name, PLACEHOLDER_ERROR)
+        return cleaned
+
+
+class AdminCustomerForm(CustomerForm):
+    """Admin add and edit. Adds the consent box when consent is not recorded yet
+    (always on add; on edit only for a customer without `consent_at`)."""
+
+    consent = forms.BooleanField(
+        # Draft wording, in the admin's voice. Final text pending a Thai lawyer.
+        label="ลูกค้ายินยอมให้บริษัทเก็บและใช้ข้อมูลข้างต้นเพื่อการติดต่อและการโอนเงิน",
+        error_messages={"required": "กรุณายืนยันว่าลูกค้ายินยอมก่อนบันทึก"},
+    )
+
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        if self.instance.pk and self.instance.consent_at:
+            del self.fields["consent"]
+
+    @property
+    def customer_fields(self) -> list[forms.BoundField]:
+        return [self[name] for name in CUSTOMER_FIELDS]
+
+    def save(self, commit: bool = True) -> Customer:
+        customer = super().save(commit=False)
+        if self.cleaned_data.get("consent") and not customer.consent_at:
+            customer.consent_at = timezone.now()
+        if commit:
+            customer.save()
+        return customer
+
+
+class ImportCustomerForm(CustomerForm):
+    """One row of the old Excel file. Empty cells are allowed and saved as "-"."""
+
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        for field in self.fields.values():
+            field.required = False
+        self.fields["account_number"].validators = [
+            RegexValidator(r"^(\d{1,20}|-)$", "กรุณากรอกเลขที่บัญชีเป็นตัวเลข ไม่เกิน 20 หลัก")
+        ]
+
+    def clean_account_number(self) -> str:
+        return self.cleaned_data["account_number"] or MISSING
+
+    def clean(self) -> dict:
+        cleaned = forms.ModelForm.clean(self)
+        for name in ("name", "license_plate", "phone", "bank_name"):
+            if name in cleaned and (not cleaned[name] or is_placeholder(cleaned[name])):
+                cleaned[name] = MISSING
+        return cleaned
 
 
 class PublicRegistrationForm(CustomerForm):
@@ -85,7 +162,7 @@ class PublicRegistrationForm(CustomerForm):
     @property
     def customer_fields(self) -> list[forms.BoundField]:
         """The fields a person fills in, without consent and the honeypot."""
-        return [self[name] for name in CustomerForm.Meta.fields]
+        return [self[name] for name in CUSTOMER_FIELDS]
 
     def is_bot(self) -> bool:
         return bool(self.cleaned_data.get(self.HONEYPOT_FIELD))

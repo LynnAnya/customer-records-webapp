@@ -1,8 +1,11 @@
 """Admin actions: add, edit, delete, hide/unhide. All data is fake."""
 
+from datetime import timedelta
+
 import pytest
 from django.contrib.messages import get_messages
 from django.urls import reverse
+from django.utils import timezone
 
 from audit.models import ActivityLog
 from customers.models import Customer
@@ -16,13 +19,13 @@ ACCOUNT = "9876543210"
 
 def form_data(**overrides) -> dict[str, str]:
     data = {
-        "first_name": "สมชาย",
-        "last_name": "ใจดี",
+        "name": "สมชาย ใจดี",
         "license_plate": "1กข 1234",
         "phone": PHONE,
         "bank_name": "กสิกรไทย",
         "account_number": ACCOUNT,
         "referral": "",
+        "consent": "on",
     }
     data.update(overrides)
     return data
@@ -39,7 +42,7 @@ def message_texts(response) -> list[str]:
 
 @pytest.fixture
 def customer(make_customer):
-    return make_customer(first_name="เดิม", phone="0800000001")
+    return make_customer(name="เดิม", phone="0800000001")
 
 
 def admin_urls(customer) -> list[tuple[str, str]]:
@@ -117,13 +120,13 @@ def test_admin_adds_a_customer(client, admin) -> None:
     assert created.created_by == Customer.CreatedBy.ADMIN
     assert created.phone == PHONE
     assert created.referral == "บริษัท"
-    assert created.consent_at is None
+    assert created.consent_at is not None
 
 
 def test_add_uses_the_same_validation_as_the_public_form(client, admin) -> None:
     client.force_login(admin)
 
-    response = client.post(CREATE, form_data(phone="12", account_number="abc"))
+    response = client.post(CREATE, form_data(phone="-", account_number="abc"))
 
     assert response.status_code == 200
     assert {"phone", "account_number"} <= set(response.context["form"].errors)
@@ -131,20 +134,77 @@ def test_add_uses_the_same_validation_as_the_public_form(client, admin) -> None:
     assert logged().count() == 0
 
 
-def test_add_form_has_no_consent_or_honeypot(client, admin) -> None:
+def test_add_form_asks_for_consent_but_has_no_honeypot(client, admin) -> None:
     client.force_login(admin)
 
     fields = client.get(CREATE).context["form"].fields
 
-    assert "consent" not in fields
+    assert "consent" in fields
     assert "website" not in fields
+
+
+def test_add_without_consent_is_refused(client, admin) -> None:
+    client.force_login(admin)
+
+    response = client.post(CREATE, form_data(consent=""))
+
+    assert response.status_code == 200
+    assert "consent" in response.context["form"].errors
+    assert Customer.objects.count() == 0
+
+
+def test_edit_asks_for_consent_only_when_none_is_recorded(
+    client, admin, make_customer
+) -> None:
+    client.force_login(admin)
+    without = make_customer(consent_at=None)
+    with_consent = make_customer(consent_at=timezone.now())
+
+    def form_fields(customer):
+        url = reverse("customer_edit", args=[customer.pk])
+        return client.get(url).context["form"].fields
+
+    assert "consent" in form_fields(without)
+    assert "consent" not in form_fields(with_consent)
+
+
+def test_edit_keeps_the_original_consent_time(client, admin, make_customer) -> None:
+    client.force_login(admin)
+    first = timezone.now() - timedelta(days=30)
+    customer = make_customer(consent_at=first)
+
+    client.post(reverse("customer_edit", args=[customer.pk]), form_data(consent=""))
+
+    customer.refresh_from_db()
+    assert customer.consent_at == first
+    assert customer.name == "สมชาย ใจดี"
+
+
+def test_phone_is_free_text_but_a_plain_number_is_cleaned(client, admin) -> None:
+    client.force_login(admin)
+
+    client.post(CREATE, form_data(name="ก", phone="ใช้เบอร์ John"))
+    client.post(CREATE, form_data(name="ข", phone="081-111 2222"))
+
+    assert Customer.objects.get(name="ก").phone == "ใช้เบอร์ John"
+    assert Customer.objects.get(name="ข").phone == PHONE
+
+
+def test_a_note_is_accepted_but_a_lone_dash_is_not(client, admin) -> None:
+    client.force_login(admin)
+
+    refused = client.post(CREATE, form_data(license_plate="-", bank_name="ยังไม่มี"))
+
+    assert "license_plate" in refused.context["form"].errors
+    assert "bank_name" not in refused.context["form"].errors
+    assert Customer.objects.count() == 0
 
 
 # --- Duplicate phone: allowed, but flagged --------------------------------
 
 
 def test_duplicate_phone_is_saved_with_a_warning(client, admin, make_customer) -> None:
-    make_customer(first_name="คนแรก", last_name="เดิม", phone=PHONE)
+    make_customer(name="คนแรก เดิม", phone=PHONE)
     client.force_login(admin)
 
     response = client.post(CREATE, form_data())
@@ -184,8 +244,8 @@ def test_list_flags_duplicate_phones_for_admin_only(
 def test_edit_page_names_the_other_customers_with_the_same_phone(
     client, admin, make_customer
 ) -> None:
-    make_customer(first_name="คนแรก", phone=PHONE)
-    second = make_customer(first_name="คนสอง", phone=PHONE)
+    make_customer(name="คนแรก", phone=PHONE)
+    second = make_customer(name="คนสอง", phone=PHONE)
     client.force_login(admin)
 
     page = client.get(reverse("customer_edit", args=[second.pk])).text
@@ -211,12 +271,10 @@ def test_public_form_never_reveals_a_duplicate(client, make_customer) -> None:
 def test_admin_edits_a_customer(client, admin, customer) -> None:
     client.force_login(admin)
 
-    client.post(
-        reverse("customer_edit", args=[customer.pk]), form_data(first_name="ใหม่")
-    )
+    client.post(reverse("customer_edit", args=[customer.pk]), form_data(name="ใหม่"))
 
     customer.refresh_from_db()
-    assert customer.first_name == "ใหม่"
+    assert customer.name == "ใหม่"
     assert customer.created_by == Customer.CreatedBy.ADMIN  # origin is not changed
 
 
@@ -289,8 +347,8 @@ def test_hidden_customer_disappears_for_staff_at_once(
 def test_bulk_hide_ignores_unknown_and_rubbish_ids(
     client, admin, make_customer
 ) -> None:
-    a, b = make_customer(first_name="a"), make_customer(first_name="b")
-    untouched = make_customer(first_name="c")
+    a, b = make_customer(name="a"), make_customer(name="b")
+    untouched = make_customer(name="c")
     client.force_login(admin)
 
     client.post(HIDE, {"ids": f"{a.pk},{b.pk},999999,abc,-5", "hidden": "1"})
@@ -324,7 +382,7 @@ def test_each_action_writes_exactly_one_safe_log_row(client, admin, customer) ->
 
     steps = [
         ("customer_create", lambda: client.post(CREATE, form_data())),
-        ("customer_edit", lambda: client.post(edit, form_data(first_name="ใหม่"))),
+        ("customer_edit", lambda: client.post(edit, form_data(name="ใหม่"))),
         (
             "customer_hide",
             lambda: client.post(HIDE, {"ids": customer.pk, "hidden": "1"}),
@@ -348,7 +406,7 @@ def test_each_action_writes_exactly_one_safe_log_row(client, admin, customer) ->
             assert secret not in str(entry.details)
 
     # The name is kept in the log after the customer is gone.
-    assert logged().latest("id").details["customer_names"] == ["ใหม่ ใจดี"]
+    assert logged().latest("id").details["customer_names"] == ["ใหม่"]
 
 
 # --- Return address -------------------------------------------------------

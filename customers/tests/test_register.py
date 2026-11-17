@@ -17,8 +17,7 @@ THANKS = reverse("register_thanks")
 
 def valid_data(**overrides) -> dict[str, str]:
     data = {
-        "first_name": "ทดสอบ",
-        "last_name": "ตัวอย่าง",
+        "name": "ทดสอบ ตัวอย่าง",
         "license_plate": "1กข 1234",
         "phone": "0800000000",
         "bank_name": "ธนาคารทดสอบ",
@@ -68,14 +67,14 @@ def test_spaces_and_dashes_are_removed_from_numbers(client) -> None:
 @pytest.mark.parametrize(
     ("field", "value"),
     [
-        ("phone", "080000000"),  # 9 digits
-        ("phone", "08000000000"),  # 11 digits
-        ("phone", "1800000000"),  # does not start with 0
-        ("phone", "08000abcde"),
+        ("phone", ""),
+        ("phone", "-"),
         ("account_number", "12ab34"),
         ("account_number", "1" * 21),
-        ("first_name", ""),
-        ("last_name", ""),
+        ("account_number", "-"),
+        ("name", ""),
+        ("name", "-"),
+        ("license_plate", "--"),
         ("license_plate", ""),
         ("bank_name", ""),
         ("consent", ""),
@@ -130,7 +129,7 @@ def test_rate_limit_forgets_attempts_older_than_an_hour(client, settings) -> Non
 
 
 def test_failed_validation_does_not_use_up_the_rate_limit(client) -> None:
-    client.post(REGISTER, valid_data(phone="123"))
+    client.post(REGISTER, valid_data(phone="-"))
 
     assert RegistrationAttempt.objects.count() == 0
 
@@ -158,8 +157,8 @@ def test_other_http_methods_are_not_allowed(client) -> None:
 
 
 def test_error_messages_are_friendly_thai(client) -> None:
-    response = client.post(REGISTER, valid_data(first_name="", consent=""))
+    response = client.post(REGISTER, valid_data(name="", consent=""))
 
     errors = response.context["form"].errors
-    assert errors["first_name"] == ["กรุณากรอกข้อมูลในช่องนี้"]
+    assert errors["name"] == ["กรุณากรอกข้อมูลในช่องนี้"]
     assert errors["consent"] == ["กรุณากดยินยอมก่อนส่งข้อมูล"]

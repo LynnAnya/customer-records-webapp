@@ -10,7 +10,7 @@ from django.utils import timezone
 
 from audit.models import ActivityLog
 from audit.services import log_action
-from customers.forms import CustomerForm
+from customers.forms import AdminCustomerForm
 from customers.models import Customer
 from customers.queries import pinned_customers, visible_customers
 
@@ -21,14 +21,14 @@ def _details(customers: list[Customer]) -> dict:
     """Log details: IDs and names only. Never phone or account numbers."""
     return {
         "customer_ids": [customer.pk for customer in customers],
-        "customer_names": [customer.full_name for customer in customers],
+        "customer_names": [customer.name for customer in customers],
         "count": len(customers),
     }
 
 
 @transaction.atomic
 def create_customer(
-    form: CustomerForm, user: AbstractBaseUser, ip_address: str | None
+    form: AdminCustomerForm, user: AbstractBaseUser, ip_address: str | None
 ) -> Customer:
     customer = form.save(commit=False)
     customer.created_by = Customer.CreatedBy.ADMIN
@@ -44,7 +44,7 @@ def create_customer(
 
 @transaction.atomic
 def update_customer(
-    form: CustomerForm, user: AbstractBaseUser, ip_address: str | None
+    form: AdminCustomerForm, user: AbstractBaseUser, ip_address: str | None
 ) -> Customer:
     customer = form.save()
     log_action(

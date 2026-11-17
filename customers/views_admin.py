@@ -11,7 +11,7 @@ from accounts.permissions import admin_required
 from audit.services import get_client_ip
 from customers import services
 from customers.filters import parse_selected_ids
-from customers.forms import CustomerForm
+from customers.forms import AdminCustomerForm
 from customers.models import Customer
 from customers.queries import phone_duplicates, visible_customers
 
@@ -34,21 +34,21 @@ def _back_to_list(request: HttpRequest) -> HttpResponse:
 
 def _warn_about_duplicate_phone(request: HttpRequest, customer: Customer) -> None:
     """Duplicate phones are allowed, but the admin is told about them."""
-    others = [other.full_name for other in phone_duplicates(customer)[:5]]
+    others = [other.name for other in phone_duplicates(customer)[:5]]
     if others:
         messages.warning(
             request,
-            f"เบอร์โทรของ {customer.full_name} ซ้ำกับลูกค้ารายอื่น: {', '.join(others)}",
+            f"เบอร์โทรของ {customer.name} ซ้ำกับลูกค้ารายอื่น: {', '.join(others)}",
         )
 
 
 @admin_required
 @require_http_methods(["GET", "POST"])
 def customer_create(request: HttpRequest) -> HttpResponse:
-    form = CustomerForm(request.POST or None)
+    form = AdminCustomerForm(request.POST or None)
     if request.method == "POST" and form.is_valid():
         customer = services.create_customer(form, request.user, get_client_ip(request))
-        messages.success(request, f"เพิ่มลูกค้า {customer.full_name} แล้ว")
+        messages.success(request, f"เพิ่มลูกค้า {customer.name} แล้ว")
         _warn_about_duplicate_phone(request, customer)
         return _back_to_list(request)
     context = {"form": form, "customer": None, "back_url": _back_url(request)}
@@ -59,10 +59,10 @@ def customer_create(request: HttpRequest) -> HttpResponse:
 @require_http_methods(["GET", "POST"])
 def customer_edit(request: HttpRequest, pk: int) -> HttpResponse:
     customer = get_object_or_404(visible_customers(request.user), pk=pk)
-    form = CustomerForm(request.POST or None, instance=customer)
+    form = AdminCustomerForm(request.POST or None, instance=customer)
     if request.method == "POST" and form.is_valid():
         customer = services.update_customer(form, request.user, get_client_ip(request))
-        messages.success(request, f"บันทึกข้อมูล {customer.full_name} แล้ว")
+        messages.success(request, f"บันทึกข้อมูล {customer.name} แล้ว")
         _warn_about_duplicate_phone(request, customer)
         return _back_to_list(request)
     context = {
@@ -80,7 +80,7 @@ def customer_delete(request: HttpRequest, pk: int) -> HttpResponse:
     """GET shows the confirmation page. Only POST deletes."""
     customer = get_object_or_404(visible_customers(request.user), pk=pk)
     if request.method == "POST":
-        name = customer.full_name
+        name = customer.name
         services.delete_customer(customer, request.user, get_client_ip(request))
         messages.success(request, f"ลบลูกค้า {name} แล้ว")
         return _back_to_list(request)

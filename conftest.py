@@ -26,8 +26,7 @@ def staff(db):
 def make_customer(db) -> Callable[..., Customer]:
     def _make(**overrides) -> Customer:
         fields = {
-            "first_name": "ทดสอบ",
-            "last_name": "ตัวอย่าง",
+            "name": "ทดสอบ ตัวอย่าง",
             "license_plate": "1กข 1234",
             "phone": "0800000000",
             "bank_name": "ธนาคารทดสอบ",

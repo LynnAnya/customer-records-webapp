@@ -1,7 +1,7 @@
 """Read customers from an Excel file and save them. Used by `import_customers`.
 
-Every row goes through `CustomerForm`, so imported data follows exactly the
-same rules as the public form and the admin pages. Nothing here prints or
+Every row goes through `ImportCustomerForm`: the same rules as the app forms,
+except that empty cells are allowed and saved as "-". Nothing here prints or
 returns a phone or account number: problems are reported by row and column.
 """
 
@@ -9,26 +9,22 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from django.db import transaction
+from django.utils import timezone
 from openpyxl import load_workbook
 
 from audit.models import ActivityLog
 from audit.services import log_action
-from customers.forms import CustomerForm
-from customers.models import Customer
+from customers.forms import ImportCustomerForm
+from customers.models import MISSING, Customer
 
 # Header text (lower-case, spaces removed) -> form field.
 HEADER_ALIASES: dict[str, str] = {
-    "ชื่อ": "first_name",
-    "firstname": "first_name",
-    "first_name": "first_name",
-    "นามสกุล": "last_name",
-    "lastname": "last_name",
-    "last_name": "last_name",
-    "ชื่อ-นามสกุล": "full_name",
-    "ชื่อนามสกุล": "full_name",
-    "ชื่อ-สกุล": "full_name",
-    "name": "full_name",
-    "fullname": "full_name",
+    "ชื่อ": "name",
+    "ชื่อ-นามสกุล": "name",
+    "ชื่อนามสกุล": "name",
+    "ชื่อ-สกุล": "name",
+    "name": "name",
+    "fullname": "name",
     "ทะเบียนรถ": "license_plate",
     "ทะเบียน": "license_plate",
     "เลขทะเบียน": "license_plate",
@@ -42,6 +38,7 @@ HEADER_ALIASES: dict[str, str] = {
     "ธนาคาร": "bank_name",
     "bank": "bank_name",
     "bank_name": "bank_name",
+    "หมายเลขบัญชี": "account_number",
     "เลขที่บัญชี": "account_number",
     "เลขบัญชี": "account_number",
     "บัญชี": "account_number",
@@ -50,15 +47,14 @@ HEADER_ALIASES: dict[str, str] = {
     "ผู้แนะนำ": "referral",
     "referral": "referral",
 }
-REQUIRED_FIELDS = ("license_plate", "phone", "bank_name", "account_number")
+# Columns that must exist. Their cells may be empty (saved as "-").
+REQUIRED_FIELDS = ("name", "license_plate", "phone", "bank_name", "account_number")
 FIELD_LABELS = {
-    "first_name": "ชื่อ",
-    "last_name": "นามสกุล",
-    "full_name": "ชื่อ-นามสกุล",
+    "name": "ชื่อ",
     "license_plate": "ทะเบียนรถ",
-    "phone": "เบอร์โทรศัพท์",
+    "phone": "เบอร์โทร",
     "bank_name": "ธนาคาร",
-    "account_number": "เลขที่บัญชี",
+    "account_number": "หมายเลขบัญชี",
     "referral": "ผู้แนะนำ",
 }
 
@@ -95,12 +91,13 @@ def _cell_text(value: object) -> str:
     return str(value).strip()
 
 
-def _restore_phone_zero(phone: str) -> str:
-    """Excel drops the leading 0 of numbers. A 9-digit phone gets it back."""
-    digits = "".join(character for character in phone if character.isdigit())
-    if len(digits) == 9 and not digits.startswith("0"):
-        return f"0{digits}"
-    return phone
+def _phone_text(value: object) -> str:
+    """Excel drops the leading 0 of a phone stored as a number. A 9-digit number
+    gets it back. Text cells are kept as written."""
+    text = _cell_text(value)
+    if isinstance(value, int | float) and len(text) == 9 and text.isdigit():
+        return f"0{text}"
+    return text
 
 
 def _read_rows(path: Path) -> tuple[list[str], list[tuple[int, dict[str, object]]]]:
@@ -122,10 +119,7 @@ def _read_rows(path: Path) -> tuple[list[str], list[tuple[int, dict[str, object]
 
         columns = [HEADER_ALIASES.get(_header_key(cell), "") for cell in header_row]
         found = {name for name in columns if name}
-        has_name = "full_name" in found or {"first_name", "last_name"} <= found
         missing = [FIELD_LABELS[name] for name in REQUIRED_FIELDS if name not in found]
-        if not has_name:
-            missing.insert(0, "ชื่อ + นามสกุล (หรือ ชื่อ-นามสกุล)")
         if missing:
             seen = ", ".join(str(cell) for cell in header_row if cell) or "(none)"
             raise ImportFileError(
@@ -146,12 +140,7 @@ def _read_rows(path: Path) -> tuple[list[str], list[tuple[int, dict[str, object]
 
 def _form_data(values: dict[str, object]) -> dict[str, str]:
     data = {name: _cell_text(cell) for name, cell in values.items()}
-    if "full_name" in data:
-        # "สมชาย ใจดี" -> first word is the first name, the rest the last name.
-        first, _, last = data.pop("full_name").partition(" ")
-        data.setdefault("first_name", first)
-        data.setdefault("last_name", last.strip())
-    data["phone"] = _restore_phone_zero(data.get("phone", ""))
+    data["phone"] = _phone_text(values.get("phone"))
     data.setdefault("referral", "")
     return data
 
@@ -167,17 +156,15 @@ def import_customers(path: Path, *, dry_run: bool) -> ImportResult:
 
     existing_phones = set(Customer.objects.values_list("phone", flat=True))
     existing_people = set(
-        Customer.objects.values_list(
-            "first_name", "last_name", "phone", "account_number"
-        )
+        Customer.objects.values_list("name", "phone", "account_number")
     )
     phones_in_file: set[str] = set()
-    forms: list[CustomerForm] = []
+    forms: list[ImportCustomerForm] = []
 
     for row_number, values in rows:
         if isinstance(values.get("account_number"), int | float):
             result.numeric_account_rows.append(row_number)
-        form = CustomerForm(_form_data(values))
+        form = ImportCustomerForm(_form_data(values))
         if not form.is_valid():
             for field_name, messages in form.errors.items():
                 label = FIELD_LABELS.get(field_name, field_name)
@@ -185,20 +172,16 @@ def import_customers(path: Path, *, dry_run: bool) -> ImportResult:
             continue
 
         cleaned = form.cleaned_data
-        person = (
-            cleaned["first_name"],
-            cleaned["last_name"],
-            cleaned["phone"],
-            cleaned["account_number"],
-        )
+        person = (cleaned["name"], cleaned["phone"], cleaned["account_number"])
         if person in existing_people:
             # Same person already saved (for example the import was run twice).
             result.skipped_existing += 1
             continue
         existing_people.add(person)
-        if cleaned["phone"] in existing_phones or cleaned["phone"] in phones_in_file:
+        phone = cleaned["phone"]
+        if phone != MISSING and (phone in existing_phones or phone in phones_in_file):
             result.duplicate_phone_rows.append(row_number)
-        phones_in_file.add(cleaned["phone"])
+        phones_in_file.add(phone)
         forms.append(form)
 
     result.created = len(forms)
@@ -207,10 +190,13 @@ def import_customers(path: Path, *, dry_run: bool) -> ImportResult:
             result.created = 0
         return result
 
+    # Decided 2026-11-17: imported customers count as consented at import time.
+    imported_at = timezone.now()
     with transaction.atomic():
         for form in forms:
             customer = form.save(commit=False)
             customer.created_by = Customer.CreatedBy.EXCEL
+            customer.consent_at = imported_at
             customer.save()
         log_action(
             ActivityLog.Action.EXCEL_IMPORT,

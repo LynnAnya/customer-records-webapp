@@ -8,8 +8,7 @@ if TYPE_CHECKING:
     from customers.models import Customer
 
 STAFF_FIELDS: tuple[str, ...] = (
-    "first_name",
-    "last_name",
+    "name",
     "license_plate",
     "bank_name",
     "account_number",
@@ -31,7 +30,12 @@ def visible_fields(user: AbstractBaseUser | AnonymousUser) -> tuple[str, ...]:
 
 
 def mask_account_number(account_number: str) -> str:
-    """Show only the last 4 digits, for example '•••• 4567'."""
+    """Show only the last 4 digits, for example '•••• 4567'.
+
+    A missing number ("-" from the old Excel file) is shown as it is.
+    """
+    if not account_number.isdigit():
+        return account_number
     return f"•••• {account_number[-4:]}"
 
 
@@ -45,7 +49,7 @@ def export_values(customer: "Customer") -> list[tuple[str, str]]:
     one of them by accident.
     """
     return [
-        ("ชื่อ", customer.full_name),
+        ("ชื่อ", customer.name),
         ("ทะเบียนรถ", customer.license_plate),
         ("ธนาคาร", customer.bank_name),
         ("เลขที่บัญชี", customer.account_number),

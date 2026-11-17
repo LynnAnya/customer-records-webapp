@@ -31,8 +31,7 @@ def pdf_text(content: bytes) -> str:
 @pytest.fixture
 def somchai(make_customer):
     return make_customer(
-        first_name="สมชาย",
-        last_name="ใจดี",
+        name="สมชาย ใจดี",
         license_plate="1กข 1234",
         phone=PHONE,
         bank_name="กสิกรไทย",
@@ -45,7 +44,7 @@ def somchai(make_customer):
 
 def test_share_text_format(somchai, make_customer) -> None:
     mali = make_customer(
-        first_name="มะลิ", last_name="มีนา", license_plate="2ขค 99",
+        name="มะลิ มีนา", license_plate="2ขค 99",
         bank_name="กรุงไทย", account_number="1234567890",
     )  # fmt: skip
 
@@ -113,7 +112,7 @@ def test_text_has_full_account_number_and_no_phone(
 
 
 def test_text_follows_tick_order(client, staff, make_customer) -> None:
-    a, b, c = (make_customer(first_name=name) for name in ("หนึ่ง", "สอง", "สาม"))
+    a, b, c = (make_customer(name=name) for name in ("หนึ่ง", "สอง", "สาม"))
     client.force_login(staff)
 
     text = client.post(TEXT, {"ids": f"{c.pk},{a.pk},{b.pk}", "kind": "copy"}).text
@@ -122,10 +121,8 @@ def test_text_follows_tick_order(client, staff, make_customer) -> None:
 
 
 def test_staff_cannot_export_hidden_customers(client, staff, make_customer) -> None:
-    shown = make_customer(first_name="มองเห็น")
-    hidden = make_customer(
-        first_name="ถูกซ่อน", account_number="5550001111", is_hidden=True
-    )
+    shown = make_customer(name="มองเห็น")
+    hidden = make_customer(name="ถูกซ่อน", account_number="5550001111", is_hidden=True)
     client.force_login(staff)
 
     response = client.post(
@@ -143,7 +140,7 @@ def test_staff_cannot_export_hidden_customers(client, staff, make_customer) -> N
 
 
 def test_admin_can_export_hidden_customers(client, admin, make_customer) -> None:
-    hidden = make_customer(first_name="ถูกซ่อน", is_hidden=True)
+    hidden = make_customer(name="ถูกซ่อน", is_hidden=True)
     client.force_login(admin)
 
     assert "ถูกซ่อน" in client.post(TEXT, {"ids": str(hidden.pk), "kind": "copy"}).text
@@ -221,7 +218,7 @@ def test_pdf_embeds_the_thai_font(somchai) -> None:
 
 
 def test_pdf_works_for_one_and_for_many_customers(make_customer) -> None:
-    many = [make_customer(first_name=f"ลูกค้า{index}") for index in range(120)]
+    many = [make_customer(name=f"ลูกค้า{index}") for index in range(120)]
     now = timezone.localtime()
 
     one = build_customers_pdf(many[:1], generated_at=now, generated_by="tester")
@@ -243,9 +240,7 @@ def test_pdf_with_no_valid_id_goes_back_and_logs_nothing(client, staff) -> None:
 
 
 def test_pdf_treats_customer_text_as_plain_text(client, staff, make_customer) -> None:
-    hostile = make_customer(
-        first_name='<img src="http://evil.example/x.png">', last_name="<svg>"
-    )
+    hostile = make_customer(name='<img src="http://evil.example/x.png"> <svg>')
     client.force_login(staff)
 
     response = client.post(PDF, {"ids": str(hostile.pk)})
@@ -269,7 +264,7 @@ def test_pdf_treats_customer_text_as_plain_text(client, staff, make_customer) ->
 def test_each_export_writes_exactly_one_safe_log_row(
     client, staff, somchai, make_customer, url, extra, action
 ) -> None:
-    other = make_customer(first_name="มะลิ")
+    other = make_customer(name="มะลิ")
     client.force_login(staff)
 
     client.post(url, {"ids": f"{somchai.pk},{other.pk}", **extra})

@@ -16,7 +16,7 @@ TABLE = reverse("customer_table")
 
 
 def names(customers) -> list[str]:
-    return [customer.first_name for customer in customers]
+    return [customer.name for customer in customers]
 
 
 @pytest.fixture
@@ -33,8 +33,8 @@ def params():
 
 
 def test_filter_by_source(staff, make_customer, params) -> None:
-    make_customer(first_name="qr", created_by=Customer.CreatedBy.QR_CODE)
-    make_customer(first_name="excel", created_by=Customer.CreatedBy.EXCEL)
+    make_customer(name="qr", created_by=Customer.CreatedBy.QR_CODE)
+    make_customer(name="excel", created_by=Customer.CreatedBy.EXCEL)
 
     filters = parse_filters(params(source="excel"), staff)
 
@@ -42,9 +42,9 @@ def test_filter_by_source(staff, make_customer, params) -> None:
 
 
 def test_filter_by_referral_ignores_letter_case(staff, make_customer, params) -> None:
-    make_customer(first_name="a", referral="Facebook")
-    make_customer(first_name="b", referral="facebook")
-    make_customer(first_name="c", referral="คุณสมศรี")
+    make_customer(name="a", referral="Facebook")
+    make_customer(name="b", referral="facebook")
+    make_customer(name="c", referral="คุณสมศรี")
 
     filters = parse_filters(params(referral="FACEBOOK"), staff)
 
@@ -53,11 +53,11 @@ def test_filter_by_referral_ignores_letter_case(staff, make_customer, params) ->
 
 def test_filter_by_date_range(staff, make_customer, params) -> None:
     today = timezone.localdate()
-    old = make_customer(first_name="old")
+    old = make_customer(name="old")
     Customer.objects.filter(pk=old.pk).update(
         created_at=timezone.now() - timedelta(days=10)
     )
-    make_customer(first_name="new")
+    make_customer(name="new")
 
     since = parse_filters(params(**{"from": str(today - timedelta(days=1))}), staff)
     until = parse_filters(params(to=str(today - timedelta(days=5))), staff)
@@ -67,8 +67,8 @@ def test_filter_by_date_range(staff, make_customer, params) -> None:
 
 
 def test_admin_can_filter_hidden_or_visible(admin, make_customer, params) -> None:
-    make_customer(first_name="shown")
-    make_customer(first_name="hidden", is_hidden=True)
+    make_customer(name="shown")
+    make_customer(name="hidden", is_hidden=True)
 
     only_hidden = parse_filters(params(hidden="hidden"), admin)
     only_visible = parse_filters(params(hidden="visible"), admin)
@@ -80,8 +80,8 @@ def test_admin_can_filter_hidden_or_visible(admin, make_customer, params) -> Non
 def test_staff_cannot_use_the_hidden_filter(
     client, staff, make_customer, params
 ) -> None:
-    make_customer(first_name="มองเห็น")
-    make_customer(first_name="ถูกซ่อน", is_hidden=True)
+    make_customer(name="มองเห็น")
+    make_customer(name="ถูกซ่อน", is_hidden=True)
     client.force_login(staff)
 
     assert parse_filters(params(hidden="hidden"), staff).hidden == ""
@@ -112,8 +112,8 @@ def test_invalid_filter_values_are_ignored(client, admin, make_customer, bad) ->
 
 
 def test_filters_combine_with_search(staff, make_customer, params) -> None:
-    make_customer(first_name="สมชาย", created_by=Customer.CreatedBy.QR_CODE)
-    make_customer(first_name="สมชาย", created_by=Customer.CreatedBy.EXCEL)
+    make_customer(name="สมชาย", created_by=Customer.CreatedBy.QR_CODE)
+    make_customer(name="สมชาย", created_by=Customer.CreatedBy.EXCEL)
 
     filters = parse_filters(params(source="qr_code"), staff)
 
@@ -150,7 +150,7 @@ def test_selected_ids_parser_keeps_order_and_drops_rubbish() -> None:
 
 
 def test_pinned_rows_come_first_in_tick_order(client, staff, make_customer) -> None:
-    a, b, c = (make_customer(first_name=name) for name in "abc")
+    a, b, c = (make_customer(name=name) for name in "abc")
     client.force_login(staff)
 
     response = client.get(TABLE, {"selected": f"{a.pk},{c.pk}"})
@@ -165,8 +165,8 @@ def test_pinned_rows_come_first_in_tick_order(client, staff, make_customer) -> N
 def test_pinned_rows_are_not_repeated_in_the_results(
     client, staff, make_customer
 ) -> None:
-    a = make_customer(first_name="a")
-    make_customer(first_name="b")
+    a = make_customer(name="a")
+    make_customer(name="b")
     client.force_login(staff)
 
     response = client.get(TABLE, {"selected": str(a.pk)})
@@ -178,8 +178,8 @@ def test_pinned_rows_are_not_repeated_in_the_results(
 def test_pinned_rows_survive_a_search_that_does_not_match_them(
     client, staff, make_customer
 ) -> None:
-    pinned = make_customer(first_name="ปักหมุด")
-    make_customer(first_name="สมชาย")
+    pinned = make_customer(name="ปักหมุด")
+    make_customer(name="สมชาย")
     client.force_login(staff)
 
     response = client.get(TABLE, {"q": "สมชาย", "selected": str(pinned.pk)})
@@ -191,7 +191,7 @@ def test_pinned_rows_survive_a_search_that_does_not_match_them(
 def test_pinned_rows_survive_page_changes_and_do_not_use_page_slots(
     client, staff, make_customer
 ) -> None:
-    customers = [make_customer(first_name=f"c{index:02d}") for index in range(28)]
+    customers = [make_customer(name=f"c{index:02d}") for index in range(28)]
     pinned_ids = f"{customers[0].pk},{customers[1].pk}"
     client.force_login(staff)
 
@@ -207,7 +207,7 @@ def test_pinned_rows_survive_page_changes_and_do_not_use_page_slots(
 def test_staff_cannot_pin_a_hidden_customer(
     client, staff, admin, make_customer
 ) -> None:
-    hidden = make_customer(first_name="ถูกซ่อน", is_hidden=True)
+    hidden = make_customer(name="ถูกซ่อน", is_hidden=True)
     client.force_login(staff)
 
     response = client.get(TABLE, {"selected": f"{hidden.pk},999999"})
@@ -221,7 +221,7 @@ def test_staff_cannot_pin_a_hidden_customer(
 def test_unticking_puts_the_row_back_in_the_results(
     client, staff, make_customer
 ) -> None:
-    a = make_customer(first_name="a")
+    a = make_customer(name="a")
     client.force_login(staff)
 
     response = client.get(TABLE, {"selected": ""})
@@ -238,7 +238,7 @@ def test_polling_url_keeps_search_sort_filters_and_page(
     client, staff, make_customer
 ) -> None:
     for index in range(27):
-        make_customer(first_name=f"สมชาย{index}", created_by=Customer.CreatedBy.EXCEL)
+        make_customer(name=f"สมชาย{index}", created_by=Customer.CreatedBy.EXCEL)
     client.force_login(staff)
 
     state = {

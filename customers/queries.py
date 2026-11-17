@@ -3,7 +3,7 @@ from django.db.models import Exists, OuterRef, Q, QuerySet
 from django.db.models.functions import Collate
 
 from customers.filters import CustomerFilters, apply_filters
-from customers.models import Customer
+from customers.models import MISSING, Customer
 from customers.visibility import can_see_phone, visible_fields
 
 # Postgres' built-in Thai (ICU) collation, so names sort ก-ฮ the way Thai readers
@@ -22,8 +22,8 @@ def _thai(field: str) -> Collate:
 SORTS = {
     "newest": ("-created_at", "-id"),
     "oldest": ("created_at", "id"),
-    "name_az": (_thai("first_name").asc(), _thai("last_name").asc(), "id"),
-    "name_za": (_thai("first_name").desc(), _thai("last_name").desc(), "-id"),
+    "name_az": (_thai("name").asc(), "id"),
+    "name_za": (_thai("name").desc(), "-id"),
     "bank_az": (_thai("bank_name").asc(), "id"),
     "bank_za": (_thai("bank_name").desc(), "-id"),
 }
@@ -93,12 +93,17 @@ def _flag_duplicate_phones(
     """
     if not can_see_phone(user):
         return customers
-    same_phone = Customer.objects.filter(phone=OuterRef("phone")).exclude(
-        pk=OuterRef("pk")
+    # "-" means "no phone" (old Excel rows), so it never counts as a duplicate.
+    same_phone = (
+        Customer.objects.filter(phone=OuterRef("phone"))
+        .exclude(phone=MISSING)
+        .exclude(pk=OuterRef("pk"))
     )
     return customers.annotate(has_duplicate_phone=Exists(same_phone))
 
 
 def phone_duplicates(customer: Customer) -> QuerySet[Customer]:
     """Other customers with the same phone. For admin pages only."""
+    if customer.phone == MISSING:
+        return Customer.objects.none()
     return Customer.objects.filter(phone=customer.phone).exclude(pk=customer.pk)

@@ -13,7 +13,7 @@ ACCOUNT = "9876543210"
 
 
 def names(queryset) -> list[str]:
-    return [customer.first_name for customer in queryset]
+    return [customer.name for customer in queryset]
 
 
 # --- Access ---------------------------------------------------------------
@@ -81,8 +81,8 @@ def test_phone_is_only_a_visible_field_for_admins(admin, staff) -> None:
 
 @pytest.mark.parametrize("url", [LIST, TABLE])
 def test_staff_never_get_hidden_customers(client, staff, make_customer, url) -> None:
-    make_customer(first_name="มองเห็น")
-    make_customer(first_name="ถูกซ่อน", is_hidden=True)
+    make_customer(name="มองเห็น")
+    make_customer(name="ถูกซ่อน", is_hidden=True)
     client.force_login(staff)
 
     page = client.get(url).text
@@ -93,13 +93,13 @@ def test_staff_never_get_hidden_customers(client, staff, make_customer, url) -> 
 
 
 def test_staff_search_cannot_reach_hidden_customers(staff, make_customer) -> None:
-    make_customer(first_name="ถูกซ่อน", is_hidden=True)
+    make_customer(name="ถูกซ่อน", is_hidden=True)
 
     assert not search_customers(staff, "ถูกซ่อน").exists()
 
 
 def test_admin_sees_hidden_customers_with_a_badge(client, admin, make_customer) -> None:
-    make_customer(first_name="ถูกซ่อน", is_hidden=True)
+    make_customer(name="ถูกซ่อน", is_hidden=True)
     client.force_login(admin)
 
     page = client.get(LIST).text
@@ -137,21 +137,18 @@ def test_mask_keeps_only_the_last_four_digits() -> None:
 )
 def test_search_matches_each_visible_field(staff, make_customer, query) -> None:
     make_customer(
-        first_name="สมชาย",
-        last_name="ใจดี",
+        name="สมชาย ใจดี",
         bank_name="กสิกรไทย",
         account_number=ACCOUNT,
         referral="คุณสมศรี",
     )
-    make_customer(
-        first_name="อื่น", last_name="คนละคน", license_plate="9ฮฮ 9", referral="x"
-    )
+    make_customer(name="อื่น คนละคน", license_plate="9ฮฮ 9", referral="x")
 
-    assert names(search_customers(staff, query)) == ["สมชาย"]
+    assert names(search_customers(staff, query)) == ["สมชาย ใจดี"]
 
 
 def test_search_is_case_insensitive(staff, make_customer) -> None:
-    make_customer(first_name="John")
+    make_customer(name="John")
 
     assert search_customers(staff, "john").count() == 1
 
@@ -169,8 +166,8 @@ def test_empty_search_shows_a_helpful_message(client, staff, make_customer) -> N
 
 
 def test_default_sort_is_newest_first(staff, make_customer) -> None:
-    make_customer(first_name="เก่า")
-    make_customer(first_name="ใหม่")
+    make_customer(name="เก่า")
+    make_customer(name="ใหม่")
 
     assert names(search_customers(staff)) == ["ใหม่", "เก่า"]
     assert names(search_customers(staff, sort="oldest")) == ["เก่า", "ใหม่"]
@@ -179,7 +176,7 @@ def test_default_sort_is_newest_first(staff, make_customer) -> None:
 def test_thai_names_sort_in_thai_dictionary_order(staff, make_customer) -> None:
     # Leading vowels (เ ไ) must sort by their consonant, not after ฮ.
     for name in ["ไก่", "ขวด", "กา", "คน", "เกวียน"]:
-        make_customer(first_name=name)
+        make_customer(name=name)
 
     expected = ["กา", "เกวียน", "ไก่", "ขวด", "คน"]
     assert names(search_customers(staff, sort="name_az")) == expected
@@ -187,8 +184,8 @@ def test_thai_names_sort_in_thai_dictionary_order(staff, make_customer) -> None:
 
 
 def test_bank_sort(staff, make_customer) -> None:
-    make_customer(first_name="b", bank_name="ไทยพาณิชย์")
-    make_customer(first_name="a", bank_name="กรุงเทพ")
+    make_customer(name="b", bank_name="ไทยพาณิชย์")
+    make_customer(name="a", bank_name="กรุงเทพ")
 
     assert names(search_customers(staff, sort="bank_az")) == ["a", "b"]
 
@@ -197,8 +194,8 @@ def test_bank_sort(staff, make_customer) -> None:
 def test_unknown_sort_keys_fall_back_to_newest(
     client, staff, make_customer, bad_sort
 ) -> None:
-    make_customer(first_name="เก่า")
-    make_customer(first_name="ใหม่")
+    make_customer(name="เก่า")
+    make_customer(name="ใหม่")
     client.force_login(staff)
 
     response = client.get(TABLE, {"sort": bad_sort})
@@ -213,7 +210,7 @@ def test_unknown_sort_keys_fall_back_to_newest(
 
 def test_pagination_shows_25_per_page(client, staff, make_customer) -> None:
     for index in range(27):
-        make_customer(first_name=f"ลูกค้า{index:02d}")
+        make_customer(name=f"ลูกค้า{index:02d}")
     client.force_login(staff)
 
     first = client.get(TABLE)
@@ -229,7 +226,7 @@ def test_pagination_shows_25_per_page(client, staff, make_customer) -> None:
 def test_fragment_is_only_the_table_and_keeps_the_page_url(
     client, staff, make_customer
 ) -> None:
-    make_customer(first_name="สมชาย")
+    make_customer(name="สมชาย")
     client.force_login(staff)
 
     response = client.get(TABLE, {"q": "สมชาย", "sort": "name_az"})

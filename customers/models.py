@@ -4,7 +4,10 @@ from django.core.validators import RegexValidator
 from django.db import models
 
 DEFAULT_REFERRAL = "บริษัท"
-digits_only = RegexValidator(r"^\d+$", "กรุณากรอกเฉพาะตัวเลข")
+# Stored for a value the old Excel file did not have. App forms never accept it,
+# so only imported rows can hold it.
+MISSING = "-"
+account_number_text = RegexValidator(r"^(\d+|-)$", "กรุณากรอกเฉพาะตัวเลข")
 
 
 def normalize_referral(value: str | None) -> str:
@@ -19,13 +22,15 @@ class Customer(models.Model):
         ADMIN = "admin", "Admin"
         EXCEL = "excel", "Excel"
 
-    first_name = models.CharField(max_length=150)
-    last_name = models.CharField(max_length=150)
+    # One name field (the client's data has one name column). Duplicates allowed.
+    name = models.CharField(max_length=200)
     license_plate = models.CharField(max_length=50)
-    # Text, not numbers: leading zeros matter and we never do maths on them.
-    phone = models.CharField(max_length=20, validators=[digits_only])
+    # Free text: a number keeps its leading 0, and old rows hold notes such as
+    # "ใช้เบอร์ John".
+    phone = models.CharField(max_length=100)
     bank_name = models.CharField(max_length=100)
-    account_number = models.CharField(max_length=30, validators=[digits_only])
+    # Text, not a number: leading zeros matter. Digits only, or MISSING.
+    account_number = models.CharField(max_length=30, validators=[account_number_text])
     referral = models.CharField(max_length=150, blank=True, default=DEFAULT_REFERRAL)
     is_hidden = models.BooleanField(default=False)
     created_by = models.CharField(max_length=10, choices=CreatedBy.choices)
@@ -35,15 +40,11 @@ class Customer(models.Model):
 
     def __str__(self) -> str:
         # Name only: never put phone or account numbers in a string that may be logged.
-        return self.full_name
+        return self.name
 
     def save(self, *args, **kwargs) -> None:
         self.referral = normalize_referral(self.referral)
         super().save(*args, **kwargs)
-
-    @property
-    def full_name(self) -> str:
-        return f"{self.first_name} {self.last_name}".strip()
 
 
 class RegistrationAttempt(models.Model):

@@ -1,17 +1,21 @@
 from urllib.parse import urlencode
 
+from django.contrib import messages
 from django.contrib.auth.decorators import login_not_required
 from django.core.paginator import Paginator
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.utils import timezone
-from django.views.decorators.http import require_GET, require_http_methods
+from django.views.decorators.http import require_GET, require_http_methods, require_POST
 
+from audit.models import ActivityLog
 from audit.services import get_client_ip
+from customers import services
 from customers.filters import parse_filters, parse_selected_ids, referral_choices
 from customers.forms import PublicRegistrationForm
 from customers.models import Customer
+from customers.pdf import build_customers_pdf
 from customers.queries import (
     DEFAULT_SORT,
     clean_sort,
@@ -20,6 +24,7 @@ from customers.queries import (
     visible_customers,
 )
 from customers.rate_limit import is_rate_limited, record_attempt
+from customers.share_text import build_share_text
 from customers.visibility import can_see_phone
 
 PAGE_SIZE = 25
@@ -141,3 +146,57 @@ def customer_table(request: HttpRequest) -> HttpResponse:
     # Keep the address bar on the full page, so reload and bookmarks work.
     response["HX-Push-Url"] = context["list_url"]
     return response
+
+
+# Copy and Share use the same text; only the log action differs.
+TEXT_ACTIONS = {
+    "copy": ActivityLog.Action.COPY,
+    "share": ActivityLog.Action.SHARE,
+}
+
+
+def _no_store(response: HttpResponse) -> HttpResponse:
+    """Exported data must not be kept in browser or proxy caches."""
+    response["Cache-Control"] = "no-store"
+    return response
+
+
+@require_POST
+def customer_share_text(request: HttpRequest) -> HttpResponse:
+    """Plain text of the ticked customers, for Copy and Share (both roles)."""
+    action = TEXT_ACTIONS.get(request.POST.get("kind", ""))
+    if action is None:
+        return HttpResponse("Unknown kind.", status=400, content_type="text/plain")
+    ids = parse_selected_ids(request.POST.get("ids"))
+    customers = services.export_customers(
+        request.user, ids, action, get_client_ip(request)
+    )
+    if not customers:
+        return HttpResponse(
+            "ไม่พบลูกค้าที่เลือก", status=400, content_type="text/plain; charset=utf-8"
+        )
+    response = HttpResponse(
+        build_share_text(customers), content_type="text/plain; charset=utf-8"
+    )
+    response["X-Customer-Count"] = str(len(customers))
+    return _no_store(response)
+
+
+@require_POST
+def customer_pdf(request: HttpRequest) -> HttpResponse:
+    """PDF of the ticked customers (both roles). Same fields as the copy text."""
+    ids = parse_selected_ids(request.POST.get("ids"))
+    customers = services.export_customers(
+        request.user, ids, ActivityLog.Action.PDF_EXPORT, get_client_ip(request)
+    )
+    if not customers:
+        messages.info(request, "ไม่พบลูกค้าที่เลือก จึงไม่ได้สร้าง PDF")
+        return redirect("customer_list")
+    now = timezone.localtime()
+    pdf = build_customers_pdf(
+        customers, generated_at=now, generated_by=request.user.get_username()
+    )
+    response = HttpResponse(pdf, content_type="application/pdf")
+    filename = f"customers-{now:%Y%m%d-%H%M}.pdf"
+    response["Content-Disposition"] = f'attachment; filename="{filename}"'
+    return _no_store(response)

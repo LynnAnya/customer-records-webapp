@@ -91,6 +91,13 @@
     return {
       ids: Array.isArray(saved) ? saved : [],
       filtersOpen: false,
+      // Copy / Share
+      busy: false,
+      notice: "",
+      sheetOpen: false,
+      sheetText: "",
+      // Share is offered on touch devices that support the system share sheet.
+      canShare: !!navigator.share && window.matchMedia("(pointer: coarse)").matches,
 
       init: function () {
         // After a page reload the server does not know the ticks yet.
@@ -145,6 +152,80 @@
       },
       save: function () {
         sessionStorage.setItem("selected", JSON.stringify(this.ids));
+      },
+
+      // --- Copy and Share -------------------------------------------------
+      // The server builds the text, re-checks every ID and writes the log row
+      // before answering. `kind` is "copy" or "share".
+      fetchText: function (kind) {
+        var form = this.$refs.exportForm;
+        var body = new URLSearchParams({ ids: this.ids.join(","), kind: kind });
+        return fetch(form.dataset.textUrl, {
+          method: "POST",
+          credentials: "same-origin",
+          headers: { "X-CSRFToken": form.querySelector("[name=csrfmiddlewaretoken]").value },
+          body: body,
+        }).then(function (response) {
+          if (!response.ok) throw new Error("request failed");
+          return response.text().then(function (text) {
+            return { text: text, count: response.headers.get("X-Customer-Count") };
+          });
+        });
+      },
+      flash: function (message) {
+        var self = this;
+        this.notice = message;
+        clearTimeout(this._noticeTimer);
+        this._noticeTimer = setTimeout(function () { self.notice = ""; }, 3500);
+      },
+      // Toolbar Copy: straight to the clipboard; if the browser refuses
+      // (Safari after a network request), show the sheet instead.
+      copy: function () {
+        var self = this;
+        this.busy = true;
+        this.fetchText("copy")
+          .then(function (result) {
+            return navigator.clipboard.writeText(result.text).then(
+              function () { self.flash("คัดลอกแล้ว " + result.count + " ราย"); },
+              function () { self.openSheet(result.text); }
+            );
+          })
+          .catch(function () { self.flash("คัดลอกไม่สำเร็จ กรุณาลองใหม่"); })
+          .finally(function () { self.busy = false; });
+      },
+      // Toolbar Share: fetch first, then the sheet. The sheet's own Share
+      // button calls navigator.share from its click, as iOS requires.
+      openShare: function () {
+        var self = this;
+        this.busy = true;
+        this.fetchText("share")
+          .then(function (result) { self.openSheet(result.text); })
+          .catch(function () { self.flash("เตรียมข้อความไม่สำเร็จ กรุณาลองใหม่"); })
+          .finally(function () { self.busy = false; });
+      },
+      openSheet: function (text) {
+        this.sheetText = text;
+        this.sheetOpen = true;
+      },
+      closeSheet: function () {
+        this.sheetOpen = false;
+        this.sheetText = ""; // do not keep account numbers in the page
+      },
+      shareNow: function () {
+        navigator.share({ text: this.sheetText }).catch(function () {});
+      },
+      copyFromSheet: function () {
+        var self = this;
+        var box = this.$refs.sheetText;
+        navigator.clipboard.writeText(this.sheetText).then(
+          function () { self.flash("คัดลอกแล้ว"); },
+          function () {
+            // Last resort: select the text so the user can copy it by hand.
+            box.focus();
+            box.select();
+            self.flash("เลือกข้อความแล้ว กดคัดลอกได้เลย");
+          }
+        );
       },
       changed: function () {
         this.save();

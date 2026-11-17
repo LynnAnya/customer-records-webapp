@@ -170,8 +170,19 @@
 
 {# Shown while customers are ticked. Copy, PDF and hide buttons are added in later steps. #}
 <div class="selection-bar" x-show="ids.length > 0" x-cloak role="status">
-  <span class="font-semibold">เลือกแล้ว <span x-text="ids.length" class="tabular-nums"></span> ราย</span>
+  <span class="font-semibold">
+    เลือกแล้ว <span x-text="ids.length" class="tabular-nums"></span> ราย
+    <span x-show="notice" x-text="notice" x-cloak class="ml-2 rounded-md bg-on-accent/20 px-2 py-0.5 text-sm" role="status"></span>
+  </span>
   <div class="flex flex-wrap items-center justify-end gap-2">
+    {# Copy, Share and PDF: both roles. The server re-checks every ID and logs first. #}
+    <button type="button" class="bar-btn" @click="copy()" :disabled="busy">{% include "components/icon.html" with name="copy" class="size-4" %}คัดลอก</button>
+    <button type="button" class="bar-btn" @click="openShare()" :disabled="busy" x-show="canShare" x-cloak>{% include "components/icon.html" with name="share" class="size-4" %}แชร์</button>
+    <form method="post" action="{% url 'customer_pdf' %}" x-ref="exportForm" data-text-url="{% url 'customer_share_text' %}">
+      {% csrf_token %}
+      <input type="hidden" name="ids" :value="ids.join(',')">
+      <button type="submit" class="bar-btn">{% include "components/icon.html" with name="file-down" class="size-4" %}PDF</button>
+    </form>
     {% if is_admin %}
     {# Hide or unhide every ticked customer. The server re-checks each ID. #}
     <form method="post" action="{% url 'customer_set_hidden' %}" class="flex gap-2" @submit="$refs.next.value = location.pathname + location.search">
@@ -183,6 +194,23 @@
     </form>
     {% endif %}
     <button type="button" class="cursor-pointer rounded-lg px-3 py-1.5 font-semibold underline underline-offset-4" @click="clear()">ล้างการเลือก</button>
+  </div>
+</div>
+
+{# Sheet with the text: for Share on phones, and when the browser blocks direct copying. #}
+<div x-show="sheetOpen" x-cloak class="fixed inset-0 z-50 flex items-end justify-center sm:items-center" role="dialog" aria-modal="true" aria-label="ข้อความสำหรับส่ง" @keydown.escape.window="closeSheet()">
+  <div class="absolute inset-0 bg-black/55" @click="closeSheet()"></div>
+  <div class="card relative flex max-h-[85dvh] w-full flex-col rounded-b-none p-5 sm:max-w-lg sm:rounded-2xl" x-transition>
+    <div class="flex items-center justify-between gap-3">
+      <h2 class="text-xl font-bold">ข้อความสำหรับส่ง</h2>
+      <button type="button" class="icon-btn" @click="closeSheet()" aria-label="ปิด">{% include "components/icon.html" with name="x" %}</button>
+    </div>
+    <textarea x-ref="sheetText" x-model="sheetText" readonly rows="10" class="control mt-3 h-auto w-full flex-1 resize-none py-3 font-sans leading-relaxed shadow-none" aria-label="ข้อความ"></textarea>
+    <div class="mt-4 flex gap-3">
+      <button type="button" class="btn btn-primary flex-1" x-show="canShare" @click="shareNow()">{% include "components/icon.html" with name="share" %}แชร์</button>
+      <button type="button" class="btn flex-1" :class="canShare ? 'btn-outline' : 'btn-primary'" @click="copyFromSheet()">{% include "components/icon.html" with name="copy" %}คัดลอก</button>
+    </div>
+    <p x-show="notice" x-text="notice" x-cloak class="mt-3 text-center text-sm text-muted" role="status"></p>
   </div>
 </div>
 

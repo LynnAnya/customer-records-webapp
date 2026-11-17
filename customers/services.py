@@ -12,7 +12,7 @@ from audit.models import ActivityLog
 from audit.services import log_action
 from customers.forms import CustomerForm
 from customers.models import Customer
-from customers.queries import visible_customers
+from customers.queries import pinned_customers, visible_customers
 
 Action = ActivityLog.Action
 
@@ -93,3 +93,30 @@ def set_hidden(
         ip_address=ip_address,
     )
     return len(to_change)
+
+
+EXPORT_ACTIONS = frozenset({Action.COPY, Action.SHARE, Action.PDF_EXPORT})
+
+
+@transaction.atomic
+def export_customers(
+    user: AbstractBaseUser,
+    ids: list[int],
+    action: ActivityLog.Action,
+    ip_address: str | None,
+) -> list[Customer]:
+    """Customers for copy, share or PDF, in tick order, logged before returning.
+
+    For admins and staff. IDs come from the browser, so each one is looked up
+    through `visible_customers(user)`; hidden (for staff), deleted and unknown
+    IDs are dropped. The log row is written first: if logging fails, no data
+    leaves the app. Returns an empty list (and logs nothing) when no ID is valid.
+    """
+    if action not in EXPORT_ACTIONS:
+        raise ValueError(f"Not an export action: {action}")
+    customers, _dropped = pinned_customers(user, ids)
+    if customers:
+        log_action(
+            action, user=user, details=_details(customers), ip_address=ip_address
+        )
+    return customers

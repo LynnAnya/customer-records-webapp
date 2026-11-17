@@ -314,7 +314,7 @@
     @apply sticky top-14 z-10 mt-4 flex items-center justify-between gap-3 rounded-2xl bg-accent px-4 py-2.5 text-on-accent shadow-card lg:top-3;
   }
   .bar-btn {
-    @apply inline-flex min-h-10 cursor-pointer items-center gap-1.5 rounded-lg bg-on-accent/15 px-3 font-semibold hover:bg-on-accent/25;
+    @apply inline-flex min-h-10 cursor-pointer items-center gap-1.5 rounded-lg bg-on-accent/15 px-3 font-semibold hover:bg-on-accent/25 disabled:cursor-wait disabled:opacity-60;
   }
   .filter-panel {
     @apply mt-3 grid gap-4 rounded-2xl border border-line bg-surface p-4 shadow-card sm:grid-cols-2 lg:grid-cols-5;

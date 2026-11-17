@@ -7,6 +7,10 @@ urlpatterns = [
     path("", RedirectView.as_view(pattern_name="customer_list"), name="home"),
     path("customers/", views.customer_list, name="customer_list"),
     path("customers/table/", views.customer_table, name="customer_table"),
+    path(
+        "customers/share-text/", views.customer_share_text, name="customer_share_text"
+    ),
+    path("customers/pdf/", views.customer_pdf, name="customer_pdf"),
     # Admin only
     path("customers/new/", views_admin.customer_create, name="customer_create"),
     path(

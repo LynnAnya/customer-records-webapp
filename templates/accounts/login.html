@@ -7,14 +7,14 @@
 {# Split layout: navy brand panel on the left, the form on the right. On phones the panel becomes a band on top. #}
 <body class="min-h-dvh lg:grid lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)]">
   <aside class="login-panel relative overflow-hidden bg-rail px-6 py-8 text-white lg:flex lg:min-h-dvh lg:flex-col lg:px-14 lg:py-12">
-    {% include "components/brand.html" with tone="rail" %}
+    {% include "components/brand.html" with tone="rail" size="lg" %}
     {# Phones show only the brand above; the big title is for wide screens. #}
     <div class="max-w-md max-lg:hidden lg:mt-auto lg:mb-auto">
-      <h1 class="text-3xl font-bold leading-snug lg:text-5xl lg:leading-tight">Customer Records</h1>
-      <p class="mt-1 text-lg font-semibold text-rail-ink lg:text-2xl">ระบบข้อมูลลูกค้า</p>
-      <p class="mt-4 max-w-sm text-base text-rail-ink">ค้นหาข้อมูลลูกค้า คัดลอกเลขบัญชีเพื่อโอนเงิน และดูแลรายชื่อลูกค้าของบริษัทไว้ในที่เดียว</p>
+      <h1 class="text-6xl font-bold leading-tight">Customer Records</h1>
+      <p class="mt-2 text-3xl font-semibold text-white/90">ระบบข้อมูลลูกค้า</p>
+      <p class="mt-5 max-w-md text-xl leading-relaxed text-white/85">ค้นหาข้อมูลลูกค้า คัดลอกเลขบัญชีเพื่อโอนเงิน และดูแลรายชื่อลูกค้าของบริษัทไว้ในที่เดียว</p>
     </div>
-    <p class="text-sm text-rail-ink/80 max-lg:hidden">สำหรับผู้ดูแลระบบและพนักงานของบริษัทเท่านั้น</p>
+    <p class="text-base text-white/75 max-lg:hidden">สำหรับผู้ดูแลระบบและพนักงานของบริษัทเท่านั้น</p>
   </aside>
 
   <main class="flex items-start justify-center px-4 py-8 lg:items-center lg:px-10">

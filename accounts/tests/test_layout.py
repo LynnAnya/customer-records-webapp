@@ -1,5 +1,7 @@
 """The app frame: menu by role, self-hosted assets. All data is fake."""
 
+import re
+
 import pytest
 from django.contrib.auth.models import AnonymousUser
 from django.urls import reverse
@@ -78,3 +80,12 @@ def test_app_pages_load_no_third_party_assets(client, staff) -> None:
 
     assert "https://" not in page
     assert "/static/js/alpine-" in page
+
+
+@pytest.mark.django_db
+def test_css_and_js_addresses_carry_a_version(client) -> None:
+    # Otherwise browsers keep showing an old stylesheet after an update.
+    page = client.get(reverse("login")).text
+
+    assert re.search(r'href="/static/css/app\.css\?v=\d+"', page)
+    assert re.search(r'src="/static/js/app\.js\?v=\d+"', page)

@@ -311,7 +311,7 @@
 
   /* Bar that appears while customers are ticked. */
   .selection-bar {
-    @apply sticky top-14 z-10 mt-4 flex items-center justify-between gap-3 rounded-2xl bg-accent px-4 py-2.5 text-on-accent shadow-card lg:top-3;
+    @apply sticky top-14 z-10 mt-4 flex flex-wrap items-center justify-between gap-x-3 gap-y-2 rounded-2xl bg-accent px-4 py-2.5 text-on-accent shadow-card lg:top-3;
   }
   .bar-btn {
     @apply inline-flex min-h-10 cursor-pointer items-center gap-1.5 rounded-lg bg-on-accent/15 px-3 font-semibold hover:bg-on-accent/25 disabled:cursor-wait disabled:opacity-60;
@@ -333,7 +333,8 @@
     background: var(--sunken);
     color: color-mix(in srgb, var(--muted) 75%, var(--sunken));
   }
-  .is-hidden-row dt {
+  .is-hidden-row dt,
+  .is-hidden-row .text-muted {
     color: inherit;
   }
   .sort-btn {

@@ -1,0 +1,26 @@
+{% comment %} Decorative only (aria-hidden). Original pattern: hairlines top-left, dots top-right, rings and an amber curve in the bottom-right corner.
+   The corner piece is sized from the screen (the smaller of 33vh and 26vw), so the largest ring never reaches the text. {% endcomment %}
+<div class="pointer-events-none absolute inset-0 -z-0" aria-hidden="true">
+  <svg class="login-drift login-drift-far absolute top-0 left-0 h-56 w-56 max-lg:hidden" viewBox="0 0 240 240" fill="none">
+    <g stroke="#ffffff" stroke-opacity="0.06" stroke-width="1.5">
+      <path d="M -20 160 L 160 -20"/><path d="M -20 220 L 220 -20"/>
+    </g>
+  </svg>
+  <svg class="login-drift absolute top-10 right-0 h-48 w-72 max-lg:hidden" viewBox="0 0 288 192">
+    <defs>
+      <pattern id="login-dots" width="26" height="26" patternUnits="userSpaceOnUse">
+        <circle cx="2" cy="2" r="1.6" fill="#ffffff" fill-opacity="0.14"/>
+      </pattern>
+    </defs>
+    <rect width="288" height="192" fill="url(#login-dots)"/>
+  </svg>
+  <svg class="login-drift login-drift-near absolute right-0 bottom-0 size-[min(33vh,26vw)] max-lg:hidden" viewBox="0 0 100 100" fill="none" overflow="visible">
+    <g stroke="#ffffff" stroke-width="1.5" vector-effect="non-scaling-stroke">
+      <circle class="login-ring" cx="100" cy="100" r="34" stroke-opacity="0.09" vector-effect="non-scaling-stroke"/>
+      <circle class="login-ring login-ring-2" cx="100" cy="100" r="56" stroke-opacity="0.08" vector-effect="non-scaling-stroke"/>
+      <circle class="login-ring login-ring-3" cx="100" cy="100" r="78" stroke-opacity="0.07" vector-effect="non-scaling-stroke"/>
+      <circle class="login-ring login-ring-4" cx="100" cy="100" r="99" stroke-opacity="0.06" vector-effect="non-scaling-stroke"/>
+    </g>
+    <path class="login-arc" d="M 100 12 A 88 88 0 0 0 12 100" pathLength="1" stroke="#ffb01f" stroke-opacity="0.75" stroke-width="1.1" stroke-linecap="round"/>
+  </svg>
+</div>

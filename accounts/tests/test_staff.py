@@ -498,12 +498,22 @@ def test_password_mismatch_is_in_thai(client, admin) -> None:
     assert response.context["form"].errors["password2"] == ["รหัสผ่านทั้งสองช่องไม่ตรงกัน"]
 
 
-def test_change_password_lives_only_under_settings(client, admin) -> None:
+def test_change_password_is_a_button_on_the_account_page(client, admin) -> None:
     client.force_login(admin)
 
-    account_page = client.get(reverse("account")).text
+    account_main = client.get(reverse("account")).text.split("<main")[-1]
     staff_page = client.get(LIST).text
 
-    assert CHANGE not in account_page.split("<main")[-1]
+    assert f'href="{CHANGE}"' in account_main
     assert "เปลี่ยนรหัสผ่านของฉัน" not in staff_page
-    assert CHANGE in account_page  # still in the ตั้งค่า menu of the frame
+    assert f'href="{CHANGE}"' not in staff_page  # not in the ตั้งค่า menu any more
+
+
+def test_settings_menu_holds_theme_and_account(client, staff) -> None:
+    client.force_login(staff)
+
+    page = client.get(reverse("customer_list")).text
+
+    assert 'href="/account/"' in page
+    assert "ธีม" in page
+    assert f'href="{CHANGE}"' not in page

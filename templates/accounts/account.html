@@ -4,7 +4,7 @@
 
 {% block content %}
 <h1 class="text-3xl font-bold leading-snug">บัญชีผู้ใช้</h1>
-<p class="mt-1 text-muted">ข้อมูลบัญชีของคุณ ดูได้อย่างเดียว</p>
+<p class="mt-1 text-muted">ข้อมูลบัญชีของคุณ</p>
 
 <dl class="card mt-6 max-w-2xl overflow-hidden">
   <div class="info-row"><dt>ชื่อผู้ใช้</dt><dd>{{ request.user.username }}</dd></div>
@@ -14,4 +14,6 @@
   <div class="info-row"><dt>เข้าสู่ระบบล่าสุด</dt><dd>{{ request.user.last_login|date:"j M Y H:i"|default:"-" }}</dd></div>
   <div class="info-row"><dt>สร้างบัญชีเมื่อ</dt><dd>{{ request.user.date_joined|date:"j M Y H:i" }}</dd></div>
 </dl>
+
+<a href="{% url 'password_change' %}" class="btn btn-primary mt-5">{% include "components/icon.html" with name="lock" class="size-4.5" %}เปลี่ยนรหัสผ่าน</a>
 {% endblock %}

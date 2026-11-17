@@ -22,12 +22,11 @@ class NavItem:
         return self.tab_label or self.label
 
 
-# ตั้งค่า and ออกจากระบบ are not page links; they live in templates/base.html.
+# ตั้งค่า (theme + บัญชีผู้ใช้) and ออกจากระบบ are not plain page links; they live
+# in templates/base.html.
 NAV_ITEMS: tuple[NavItem, ...] = (
     NavItem(label="ลูกค้า", url_name="customer_list", icon="users"),
     NavItem(label="พนักงาน", url_name="staff_list", icon="id-card", admin_only=True),
-    # Not in the phone tab bar, to keep it at five items.
-    NavItem(label="บัญชีผู้ใช้", url_name="account", icon="circle-user", in_tabs=False),
     NavItem(
         label="บันทึกกิจกรรม",
         url_name="activity_log",

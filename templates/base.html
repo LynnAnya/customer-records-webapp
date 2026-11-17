@@ -4,7 +4,9 @@
   {% include "components/head.html" %}
   <title>{% block title %}ระบบข้อมูลลูกค้า{% endblock %} · Customer Records</title>
 </head>
-<body class="min-h-dvh" x-data="appShell()" @keydown.escape.window="drawer = false">
+{% with page=request.resolver_match.url_name %}
+<body class="min-h-dvh" x-data="appShell()" @keydown.escape.window="drawer = false" {% if page == "account" or page == "password_change" %}x-init="settingsOpen = true"{% endif %}>
+{% endwith %}
   <a href="#main" class="btn btn-primary sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-50">ข้ามไปที่เนื้อหา</a>
 
   {# Mobile: dark layer behind the floating menu. Tap it to close. #}
@@ -34,7 +36,7 @@
       </a>
       {% endfor %}
 
-      {# ตั้งค่า > ธีม > three choices #}
+      {# ตั้งค่า > ธีม (three choices) and บัญชีผู้ใช้ #}
       <button type="button" class="rail-item" title="ตั้งค่า" @click="toggleSettings()" :aria-expanded="settingsOpen">
         {% include "components/icon.html" with name="settings" %}
         <span class="lg:collapsed:hidden">ตั้งค่า</span>
@@ -60,10 +62,12 @@
             <span x-show="theme === 'system'" class="ml-auto">{% include "components/icon.html" with name="check" class="size-4.5" %}</span>
           </button>
         </div>
-        <a href="{% url 'password_change' %}" class="rail-item rail-sub" {% if request.resolver_match.url_name == "password_change" %}aria-current="page"{% endif %}>
-          {% include "components/icon.html" with name="lock" class="size-4.5" %}
-          <span>เปลี่ยนรหัสผ่าน</span>
+        {% with page=request.resolver_match.url_name %}
+        <a href="{% url 'account' %}" class="rail-item rail-sub" {% if page == "account" or page == "password_change" %}aria-current="page"{% endif %}>
+          {% include "components/icon.html" with name="circle-user" class="size-4.5" %}
+          <span>บัญชีผู้ใช้</span>
         </a>
+        {% endwith %}
       </div>
     </nav>
 

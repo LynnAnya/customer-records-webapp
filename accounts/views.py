@@ -26,12 +26,12 @@ def password_change(request: HttpRequest) -> HttpResponse:
         # Keep this browser logged in; other sessions of this user end.
         update_session_auth_hash(request, user)
         messages.success(request, "เปลี่ยนรหัสผ่านแล้ว")
-        return redirect("customer_list")
+        return redirect("account")
     context = {
         "form": form,
         "title": "เปลี่ยนรหัสผ่าน",
         "lead": "กรอกรหัสผ่านปัจจุบัน แล้วตั้งรหัสผ่านใหม่",
         "submit_label": "เปลี่ยนรหัสผ่าน",
-        "back_url_name": "customer_list",
+        "back_url_name": "account",
     }
     return render(request, "accounts/form_page.html", context)

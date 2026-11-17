@@ -2,7 +2,7 @@
 <html lang="th">
 <head>
   {% include "components/head.html" %}
-  <title>{% block title %}ระบบข้อมูลลูกค้า{% endblock %}</title>
+  <title>{% block title %}ระบบข้อมูลลูกค้า{% endblock %} · Customer Records</title>
 </head>
 <body class="min-h-dvh" x-data="appShell()" @keydown.escape.window="drawer = false">
   <a href="#main" class="btn btn-primary sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-50">ข้ามไปที่เนื้อหา</a>
@@ -20,7 +20,10 @@
         <span class="lg:hidden">{% include "components/icon.html" with name="x" class="size-6" %}</span>
         <span class="max-lg:hidden">{% include "components/icon.html" with name="menu" class="size-6" %}</span>
       </button>
-      <a href="{% url 'customer_list' %}" class="truncate rounded-lg text-lg font-bold text-white lg:collapsed:hidden">ระบบข้อมูลลูกค้า</a>
+      <a href="{% url 'customer_list' %}" class="min-w-0 rounded-lg leading-tight lg:collapsed:hidden">
+        <span class="block truncate text-lg font-bold text-white">Customer Records</span>
+        <span class="block truncate text-sm text-rail-ink">ระบบข้อมูลลูกค้า</span>
+      </a>
     </div>
 
     <nav class="mt-6 flex flex-col gap-1">
@@ -78,7 +81,7 @@
     <button type="button" @click="toggleMenu()" class="btn btn-quiet w-12 px-0" aria-controls="sidebar" :aria-expanded="drawer" aria-label="เปิดเมนู">
       {% include "components/icon.html" with name="menu" class="size-6" %}
     </button>
-    <span class="text-lg font-bold">ระบบข้อมูลลูกค้า</span>
+    <span class="text-lg font-bold">Customer Records</span>
   </header>
 
   {# One-time messages (toasts). Success fades after 5 seconds; warnings stay until closed. #}

@@ -32,13 +32,13 @@
   --line: #d5dbea;
   --ink: #101a3a;
   --muted: #55607f;
-  --accent: #2545e6;
-  --accent-strong: #1a33b8;
-  --accent-soft: #e3e8ff;
+  --accent: #2d4f9e;
+  --accent-strong: #213c7c;
+  --accent-soft: #e2e8f5;
   --on-accent: #ffffff;
-  --rail: #0f1a40;
+  --rail: #0e1a40;
   --rail-ink: #c5cdea;
-  --rail-hover: #1b2a5e;
+  --rail-hover: #1b2a5a;
   --signal: #ffb01f;
   --danger: #c22a2a;
   --danger-soft: #fde6e6;
@@ -46,19 +46,19 @@
   color-scheme: light;
 }
 .dark {
-  --page: #0a1026;
+  --page: #080e22;
   --surface: #131c3d;
   --sunken: #0e1632;
   --line: #2a3663;
   --ink: #eef1fb;
   --muted: #9da8cc;
-  --accent: #7d92ff;
-  --accent-strong: #a3b2ff;
-  --accent-soft: #1f2c63;
+  --accent: #8aa4dd;
+  --accent-strong: #b0c3ea;
+  --accent-soft: #1c2a52;
   --on-accent: #0a1026;
-  --rail: #070c1f;
+  --rail: #0e1a40;
   --rail-ink: #b3bde0;
-  --rail-hover: #162150;
+  --rail-hover: #1b2a5a;
   --signal: #ffc04d;
   --danger: #ff8f8f;
   --danger-soft: #45191f;
@@ -333,10 +333,6 @@
     background: var(--sunken);
     color: color-mix(in srgb, var(--muted) 75%, var(--sunken));
   }
-  .is-hidden-row dt,
-  .is-hidden-row .text-muted {
-    color: inherit;
-  }
   .sort-btn {
     @apply -mx-2 inline-flex min-h-9 cursor-pointer items-center gap-1 rounded-lg px-2 font-semibold hover:bg-line/50 hover:text-ink;
   }
@@ -373,4 +369,18 @@
   * {
     transition: none !important;
   }
+}
+
+/* Login page: original geometric pattern over the navy panel (static/img/login-pattern.svg). */
+.login-panel {
+  background-image: url("../img/login-pattern.svg");
+  background-size: cover;
+  background-position: center;
+}
+
+/* Outside the layers on purpose: must beat the `text-muted` utility, so every
+   cell of a hidden row (dates included) fades to the same grey. */
+.is-hidden-row dt,
+.is-hidden-row .text-muted {
+  color: inherit;
 }

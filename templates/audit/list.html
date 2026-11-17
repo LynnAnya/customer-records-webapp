@@ -21,6 +21,8 @@
 
 <form id="log-filters" method="get" action="{% url 'activity_log' %}"
       hx-get="{% url 'activity_log_table' %}" hx-target="#log-table" hx-trigger="change, submit"
+      x-data="{ names: ['user', 'action', 'from', 'to'], active: {{ filters.active_count }} }"
+      @change="active = names.filter(n => $el.elements[n].value).length"
       class="filter-panel lg:grid-cols-4">
   <div>
     <label for="user">ผู้ใช้</label>
@@ -48,11 +50,13 @@
     <label for="to">ถึงวันที่</label>
     <input id="to" name="to" type="date" value="{{ filters.date_to|date:'Y-m-d' }}" class="control">
   </div>
-  {% if filters.active_count %}
+  {# Always here: clears every filter without a page reload. #}
   <div class="sm:col-span-2 lg:col-span-4">
-    <a href="{% url 'activity_log' %}" class="btn btn-quiet min-h-10 px-3 text-sm">ล้างตัวกรองทั้งหมด</a>
+    <button type="button" class="btn btn-outline min-h-10 px-3 text-sm" :disabled="!active"
+            @click="names.forEach(n => $el.closest('form').elements[n].value = ''); $el.closest('form').elements.user.dispatchEvent(new Event('change', { bubbles: true }))">
+      {% include "components/icon.html" with name="x" class="size-4" %}รีเซ็ตตัวกรอง<span x-show="active" x-cloak>&nbsp;(<span x-text="active"></span>)</span>
+    </button>
   </div>
-  {% endif %}
 </form>
 
 <div id="log-table" class="mt-5">

@@ -1,26 +1,46 @@
-{% extends "public_base.html" %}
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  {% include "components/head.html" %}
+  <title>เข้าสู่ระบบ · Customer Records</title>
+</head>
+{# Split layout: navy brand panel on the left, the form on the right. On phones the panel becomes a band on top. #}
+<body class="min-h-dvh lg:grid lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)]">
+  <aside class="login-panel relative overflow-hidden bg-rail px-6 py-8 text-white lg:flex lg:min-h-dvh lg:flex-col lg:px-14 lg:py-12">
+    {% include "components/brand.html" with tone="rail" %}
+    {# Phones show only the brand above; the big title is for wide screens. #}
+    <div class="max-w-md max-lg:hidden lg:mt-auto lg:mb-auto">
+      <h1 class="text-3xl font-bold leading-snug lg:text-5xl lg:leading-tight">Customer Records</h1>
+      <p class="mt-1 text-lg font-semibold text-rail-ink lg:text-2xl">ระบบข้อมูลลูกค้า</p>
+      <p class="mt-4 max-w-sm text-base text-rail-ink">ค้นหาข้อมูลลูกค้า คัดลอกเลขบัญชีเพื่อโอนเงิน และดูแลรายชื่อลูกค้าของบริษัทไว้ในที่เดียว</p>
+    </div>
+    <p class="text-sm text-rail-ink/80 max-lg:hidden">สำหรับผู้ดูแลระบบและพนักงานของบริษัทเท่านั้น</p>
+  </aside>
 
-{% block title %}เข้าสู่ระบบ{% endblock %}
-{% block heading %}เข้าสู่ระบบ{% endblock %}
-{% block lead %}สำหรับผู้ดูแลระบบและพนักงาน{% endblock %}
+  <main class="flex items-start justify-center px-4 py-8 lg:items-center lg:px-10">
+    <div class="w-full max-w-md">
+      <h2 class="text-3xl font-bold leading-snug">เข้าสู่ระบบ</h2>
+      <p class="mt-1 text-muted">สำหรับผู้ดูแลระบบและพนักงาน</p>
 
-{% block content %}
-<form method="post" novalidate class="card p-5 sm:p-7">
-  {% csrf_token %}
+      <form method="post" novalidate class="card mt-6 p-5 sm:p-7">
+        {% csrf_token %}
 
-  {% for error in form.non_field_errors %}
-  <p class="alert mb-5" role="alert">{{ error }}</p>
-  {% endfor %}
+        {% for error in form.non_field_errors %}
+        <p class="alert mb-5" role="alert">{{ error }}</p>
+        {% endfor %}
 
-  {% for field in form %}
-  <div class="field">
-    <label for="{{ field.id_for_label }}">{{ field.label }}</label>
-    {{ field }}
-    {% for error in field.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
-  </div>
-  {% endfor %}
+        {% for field in form %}
+        <div class="field">
+          <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+          {{ field }}
+          {% for error in field.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
+        </div>
+        {% endfor %}
 
-  <input type="hidden" name="next" value="{{ next }}">
-  <button type="submit" class="btn btn-primary btn-block">เข้าสู่ระบบ</button>
-</form>
-{% endblock %}
+        <input type="hidden" name="next" value="{{ next }}">
+        <button type="submit" class="btn btn-primary btn-block">เข้าสู่ระบบ</button>
+      </form>
+    </div>
+  </main>
+</body>
+</html>

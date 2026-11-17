@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 1000" preserveAspectRatio="xMidYMid slice">
+  <!-- Original geometric background for the login panel. Lines only; the navy comes from CSS. -->
+  <defs>
+    <pattern id="dots" width="28" height="28" patternUnits="userSpaceOnUse">
+      <circle cx="2" cy="2" r="1.6" fill="#ffffff" fill-opacity="0.13"/>
+    </pattern>
+  </defs>
+  <!-- Dot grid in the top-right corner -->
+  <rect x="470" y="40" width="300" height="250" fill="url(#dots)"/>
+  <!-- Rings growing out of the bottom-left corner -->
+  <g fill="none" stroke="#ffffff" stroke-opacity="0.07" stroke-width="2">
+    <circle cx="0" cy="1000" r="180"/>
+    <circle cx="0" cy="1000" r="300"/>
+    <circle cx="0" cy="1000" r="420"/>
+    <circle cx="0" cy="1000" r="540"/>
+    <circle cx="0" cy="1000" r="660"/>
+  </g>
+  <!-- One amber arc as the single warm accent -->
+  <path d="M 0 520 A 480 480 0 0 1 480 1000" fill="none" stroke="#ffb01f" stroke-opacity="0.55" stroke-width="3"/>
+  <!-- Stacked tiles, like cards in a file -->
+  <g fill="#ffffff">
+    <rect x="560" y="560" width="150" height="96" rx="14" fill-opacity="0.05" transform="rotate(-12 635 608)"/>
+    <rect x="590" y="610" width="150" height="96" rx="14" fill-opacity="0.07" transform="rotate(-6 665 658)"/>
+    <rect x="620" y="660" width="150" height="96" rx="14" fill-opacity="0.1"/>
+  </g>
+  <g stroke="#ffffff" stroke-opacity="0.22" stroke-width="6" stroke-linecap="round">
+    <path d="M 645 696 h 60"/>
+    <path d="M 645 722 h 92"/>
+  </g>
+  <!-- Diagonal hairlines across the top-left -->
+  <g stroke="#ffffff" stroke-opacity="0.05" stroke-width="1.5">
+    <path d="M -40 260 L 260 -40"/>
+    <path d="M -40 330 L 330 -40"/>
+    <path d="M -40 400 L 400 -40"/>
+  </g>
+</svg>

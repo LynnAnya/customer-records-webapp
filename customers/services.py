@@ -69,6 +69,27 @@ def delete_customer(
 
 
 @transaction.atomic
+def delete_customers(
+    user: AbstractBaseUser, ids: list[int], ip_address: str | None
+) -> int:
+    """Delete every ticked customer the user may see. One log row for all.
+
+    IDs come from the browser, so they are re-checked through
+    `visible_customers(user)`. Returns how many were deleted.
+    """
+    customers = list(visible_customers(user).filter(pk__in=ids).order_by("pk"))
+    if not customers:
+        return 0
+    # Copy the names first: after the delete the rows are gone.
+    details = _details(customers)
+    visible_customers(user).filter(pk__in=details["customer_ids"]).delete()
+    log_action(
+        Action.CUSTOMER_DELETE, user=user, details=details, ip_address=ip_address
+    )
+    return len(customers)
+
+
+@transaction.atomic
 def set_hidden(
     user: AbstractBaseUser, ids: list[int], hidden: bool, ip_address: str | None
 ) -> int:

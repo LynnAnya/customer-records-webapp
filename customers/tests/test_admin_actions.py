@@ -55,6 +55,7 @@ def admin_urls(customer) -> list[tuple[str, str]]:
         ("get", reverse("customer_delete", args=[customer.pk])),
         ("post", reverse("customer_delete", args=[customer.pk])),
         ("post", HIDE),
+        ("post", reverse("customer_bulk_delete")),
     ]
 
 
@@ -436,3 +437,84 @@ def test_return_address_must_be_on_this_site(client, admin, customer, evil) -> N
 
     assert response.url == LIST
     assert evil not in page
+
+
+# --- Bulk delete ----------------------------------------------------------
+
+BULK_DELETE = reverse("customer_bulk_delete")
+
+
+def test_bulk_delete_first_shows_the_names_and_deletes_nothing(
+    client, admin, make_customer
+) -> None:
+    a, b = make_customer(name="ลบหนึ่ง"), make_customer(name="ลบสอง")
+    client.force_login(admin)
+
+    response = client.post(BULK_DELETE, {"ids": f"{a.pk},{b.pk}"})
+
+    assert response.status_code == 200
+    assert "ลบหนึ่ง" in response.text and "ลบสอง" in response.text
+    assert Customer.objects.count() == 2
+    assert logged().count() == 0
+
+
+def test_bulk_delete_needs_the_typed_word(client, admin, make_customer) -> None:
+    a = make_customer()
+    client.force_login(admin)
+
+    response = client.post(BULK_DELETE, {"ids": str(a.pk), "confirm": "yes"})
+
+    assert response.status_code == 200
+    assert "ให้ถูกต้อง" in response.text
+    assert Customer.objects.count() == 1
+
+
+def test_bulk_delete_with_the_word_deletes_and_logs_once(
+    client, admin, make_customer
+) -> None:
+    a, b = make_customer(name="ก"), make_customer(name="ข")
+    keep = make_customer(name="ค")
+    client.force_login(admin)
+
+    response = client.post(
+        BULK_DELETE, {"ids": f"{a.pk},{b.pk},99999", "confirm": " ลบ "}
+    )
+
+    assert response.status_code == 302
+    assert list(Customer.objects.all()) == [keep]
+    entry = logged().get()
+    assert entry.action == "customer_delete"
+    assert entry.details["count"] == 2
+    assert sorted(entry.details["customer_names"]) == ["ก", "ข"]
+
+
+def test_bulk_delete_is_admin_only(client, staff, make_customer) -> None:
+    a = make_customer()
+    client.force_login(staff)
+
+    response = client.post(BULK_DELETE, {"ids": str(a.pk), "confirm": "ลบ"})
+
+    assert response.status_code == 403
+    assert Customer.objects.count() == 1
+
+
+def test_bulk_delete_is_post_only(client, admin) -> None:
+    client.force_login(admin)
+
+    assert client.get(BULK_DELETE).status_code == 405
+
+
+def test_bulk_delete_with_no_valid_id_goes_back(client, admin) -> None:
+    client.force_login(admin)
+
+    response = client.post(BULK_DELETE, {"ids": "99999", "confirm": "ลบ"})
+
+    assert response.status_code == 302
+    assert logged().count() == 0
+
+
+def test_actions_column_has_a_thai_title(client, admin, make_customer) -> None:
+    make_customer()
+    client.force_login(admin)
+
+    assert "การจัดการ" in client.get(LIST).text

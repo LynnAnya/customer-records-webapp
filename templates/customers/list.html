@@ -93,7 +93,8 @@
       hx-get="{% url 'customer_table' %}" hx-target="#customer-table"
       hx-trigger="input changed delay:300ms from:#q, search from:#q, change, submit, selection-changed from:body"
       @set-sort.window="$refs.sort.value = $event.detail; $refs.sort.dispatchEvent(new Event('change', { bubbles: true }))"
-      x-init="filtersOpen = {{ filters.active_count|yesno:'true,false' }}"
+      x-init="filtersOpen = {{ filters.active_count|yesno:'true,false' }}; activeFilters = {{ filters.active_count }}"
+      @change="activeFilters = countFilters($el)"
       class="mt-6">
   {# Ticked IDs in tick order, sent with every table request. #}
   <input type="hidden" id="selected-ids" name="selected" :value="ids.join(',')">
@@ -118,7 +119,7 @@
       <button type="button" class="control flex cursor-pointer items-center gap-2 font-semibold" @click="filtersOpen = !filtersOpen" :aria-expanded="filtersOpen" aria-controls="filter-panel">
         {% include "components/icon.html" with name="filter" class="size-4.5" %}
         ตัวกรอง
-        {% if filters.active_count %}<span class="badge">{{ filters.active_count }}</span>{% endif %}
+        <span class="badge" x-show="activeFilters" x-text="activeFilters" {% if not filters.active_count %}x-cloak{% endif %}>{{ filters.active_count }}</span>
       </button>
     </div>
   </div>
@@ -160,11 +161,12 @@
       </select>
     </div>
     {% endif %}
-    {% if filters.active_count %}
+    {# Always here: clears every filter (search and sort stay) without a page reload. #}
     <div class="flex items-end sm:col-span-2 lg:col-span-5">
-      <a href="{% url 'customer_list' %}{% if query %}?q={{ query|urlencode }}{% endif %}" class="btn btn-quiet min-h-10 px-3 text-sm">ล้างตัวกรองทั้งหมด</a>
+      <button type="button" class="btn btn-outline min-h-10 px-3 text-sm" :disabled="!activeFilters" @click="resetFilters($el.closest('form'))">
+        {% include "components/icon.html" with name="x" class="size-4" %}รีเซ็ตตัวกรอง<span x-show="activeFilters" x-cloak>&nbsp;(<span x-text="activeFilters"></span>)</span>
+      </button>
     </div>
-    {% endif %}
   </div>
 </form>
 
@@ -191,6 +193,13 @@
       <input type="hidden" name="next" x-ref="next">
       <button type="submit" name="hidden" value="1" class="bar-btn">{% include "components/icon.html" with name="eye-off" class="size-4" %}ซ่อน</button>
       <button type="submit" name="hidden" value="0" class="bar-btn">{% include "components/icon.html" with name="eye" class="size-4" %}แสดง</button>
+    </form>
+    {# Delete every ticked customer: opens a page where the admin types to confirm. #}
+    <form method="post" action="{% url 'customer_bulk_delete' %}" @submit="$refs.deleteNext.value = location.pathname + location.search">
+      {% csrf_token %}
+      <input type="hidden" name="ids" :value="ids.join(',')">
+      <input type="hidden" name="next" x-ref="deleteNext">
+      <button type="submit" class="bar-btn">{% include "components/icon.html" with name="trash" class="size-4" %}ลบ</button>
     </form>
     {% endif %}
     <button type="button" class="cursor-pointer rounded-lg px-3 py-1.5 font-semibold underline underline-offset-4" @click="clear()">ล้างการเลือก</button>
@@ -236,7 +245,7 @@
           </th>
           <th scope="col">
             <button type="button" class="sort-btn" @click="$dispatch('set-sort', '{% if sort == 'name_az' %}name_za{% else %}name_az{% endif %}')">
-              ชื่อ-นามสกุล
+              ชื่อ
               {% if sort == "name_az" %}{% include "components/icon.html" with name="arrow-up" class="size-4" %}{% elif sort == "name_za" %}{% include "components/icon.html" with name="arrow-down" class="size-4" %}{% endif %}
             </button>
           </th>
@@ -256,7 +265,7 @@
               {% if sort == "newest" %}{% include "components/icon.html" with name="arrow-down" class="size-4" %}{% elif sort == "oldest" %}{% include "components/icon.html" with name="arrow-up" class="size-4" %}{% endif %}
             </button>
           </th>
-          {% if is_admin %}<th scope="col" class="actions-cell"><span class="sr-only">จัดการ</span></th>{% endif %}
+          {% if is_admin %}<th scope="col" class="actions-cell">การจัดการ</th>{% endif %}
         </tr>
       </thead>
       <tbody>

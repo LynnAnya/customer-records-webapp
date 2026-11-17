@@ -88,6 +88,48 @@ def customer_delete(request: HttpRequest, pk: int) -> HttpResponse:
     return render(request, "customers/confirm_delete.html", context)
 
 
+# The word an admin types to confirm deleting several customers at once.
+BULK_DELETE_WORD = "ลบ"
+
+
+@admin_required
+@require_POST
+def customer_bulk_delete(request: HttpRequest) -> HttpResponse:
+    """Delete every ticked customer, after the admin types the confirm word.
+
+    The first POST (from the selection bar) shows the confirmation page. The
+    second POST, with the typed word, deletes. IDs are re-checked every time.
+    """
+    ids = parse_selected_ids(request.POST.get("ids"))
+    customers = list(
+        visible_customers(request.user).filter(pk__in=ids).order_by("name", "pk")
+    )
+    if not customers:
+        messages.info(request, "ไม่มีรายการที่ต้องลบ")
+        return _back_to_list(request)
+
+    typed = request.POST.get("confirm")
+    error = ""
+    if typed is not None:
+        if typed.strip() == BULK_DELETE_WORD:
+            deleted = services.delete_customers(
+                request.user, [customer.pk for customer in customers],
+                get_client_ip(request),
+            )  # fmt: skip
+            messages.success(request, f"ลบลูกค้า {deleted} รายแล้ว")
+            return _back_to_list(request)
+        error = f"กรุณาพิมพ์คำว่า “{BULK_DELETE_WORD}” ให้ถูกต้องเพื่อยืนยัน"
+
+    context = {
+        "customers": customers,
+        "ids": ",".join(str(customer.pk) for customer in customers),
+        "confirm_word": BULK_DELETE_WORD,
+        "error": error,
+        "back_url": _back_url(request),
+    }
+    return render(request, "customers/confirm_bulk_delete.html", context)
+
+
 @admin_required
 @require_POST
 def customer_set_hidden(request: HttpRequest) -> HttpResponse:

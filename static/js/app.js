@@ -91,6 +91,7 @@
     return {
       ids: Array.isArray(saved) ? saved : [],
       filtersOpen: false,
+      activeFilters: 0,
       // Copy / Share
       busy: false,
       notice: "",
@@ -98,6 +99,22 @@
       sheetText: "",
       // Share is offered on touch devices that support the system share sheet.
       canShare: !!navigator.share && window.matchMedia("(pointer: coarse)").matches,
+
+      // Filters (search and sort are not filters). Counted live in the browser,
+      // because the filter button sits outside the part HTMX swaps.
+      filterNames: ["source", "referral", "from", "to", "hidden"],
+      countFilters: function (form) {
+        return this.filterNames.filter(function (name) {
+          return form.elements[name] && form.elements[name].value;
+        }).length;
+      },
+      resetFilters: function (form) {
+        this.filterNames.forEach(function (name) {
+          if (form.elements[name]) form.elements[name].value = "";
+        });
+        // One change event: HTMX reloads the table, Alpine recounts.
+        form.elements.source.dispatchEvent(new Event("change", { bubbles: true }));
+      },
 
       init: function () {
         // After a page reload the server does not know the ticks yet.

@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+
+{% block title %}ลบลูกค้าที่เลือก{% endblock %}
+
+{% block content %}
+<div class="max-w-xl">
+  <h1 class="text-3xl font-bold leading-snug">ลบลูกค้า {{ customers|length }} ราย?</h1>
+
+  <form method="post" class="card mt-5 p-5 sm:p-7" novalidate>
+    {% csrf_token %}
+    <input type="hidden" name="ids" value="{{ ids }}">
+    <input type="hidden" name="next" value="{{ back_url }}">
+    <p class="text-lg">ข้อมูลของลูกค้าต่อไปนี้จะถูกลบถาวรและกู้คืนไม่ได้</p>
+    <ul class="mt-3 max-h-72 overflow-y-auto rounded-xl border border-line bg-sunken px-4 py-2">
+      {% for customer in customers %}
+      <li class="flex justify-between gap-4 border-b border-line py-2 last:border-b-0">
+        <span class="font-semibold">{{ customer.name }}</span>
+        <span class="text-muted">{{ customer.license_plate }}</span>
+      </li>
+      {% endfor %}
+    </ul>
+    <p class="mt-3 text-muted">หากต้องการเพียงไม่ให้พนักงานเห็น ให้ใช้ “ซ่อน” แทนการลบ</p>
+
+    <div class="field mt-5">
+      <label for="confirm">พิมพ์คำว่า <strong>{{ confirm_word }}</strong> เพื่อยืนยัน</label>
+      <input id="confirm" name="confirm" type="text" autocomplete="off" class="control" {% if error %}aria-invalid="true" aria-describedby="confirm-error"{% endif %} autofocus>
+      {% if error %}<p id="confirm-error" class="field-error">{{ error }}</p>{% endif %}
+    </div>
+
+    <div class="mt-2 flex flex-col-reverse gap-3 sm:flex-row sm:items-center">
+      <a href="{{ back_url }}" class="btn btn-outline">ยกเลิก</a>
+      <button type="submit" class="btn btn-danger sm:ml-auto">ลบถาวร {{ customers|length }} ราย</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

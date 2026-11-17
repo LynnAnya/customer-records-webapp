@@ -293,6 +293,10 @@
   .data-table th.actions-cell {
     @apply bg-sunken;
   }
+  /* Staff page: buttons stay right-aligned; only the header is centred. */
+  .data-table td.actions-end {
+    @apply text-right;
+  }
   .data-table .check-cell {
     @apply w-12 pr-0;
   }

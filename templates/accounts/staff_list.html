@@ -32,7 +32,7 @@
         <td>{% if person.is_admin %}ผู้ดูแลระบบ{% else %}พนักงาน{% endif %}</td>
         <td>{% if person.is_active %}<span class="badge badge-success">ใช้งานอยู่</span>{% else %}<span class="badge badge-muted">ปิดใช้งาน</span>{% endif %}</td>
         <td class="whitespace-nowrap">{{ person.last_login|date:"j M Y H:i"|default:"ยังไม่เคยเข้าสู่ระบบ" }}</td>
-        <td class="actions-cell">{% include "accounts/_staff_actions.html" %}</td>
+        <td class="actions-cell actions-end">{% include "accounts/_staff_actions.html" %}</td>
       </tr>
       {% endfor %}
     </tbody>

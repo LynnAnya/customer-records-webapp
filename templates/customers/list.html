@@ -91,7 +91,7 @@
 {# Search, sort and filters. HTMX swaps only the table; without JavaScript the form still works. #}
 <form id="customer-filters" method="get" action="{% url 'customer_list' %}"
       hx-get="{% url 'customer_table' %}" hx-target="#customer-table"
-      hx-trigger="input changed delay:300ms from:#q, search from:#q, change, submit, selection-changed from:body"
+      hx-trigger="input changed delay:300ms from:#q, search from:#q, input changed delay:300ms from:.filter-text, change, submit, selection-changed from:body"
       @set-sort.window="$refs.sort.value = $event.detail; $refs.sort.dispatchEvent(new Event('change', { bubbles: true }))"
       x-init="filtersOpen = {{ filters.active_count|yesno:'true,false' }}; activeFilters = {{ filters.active_count }}"
       @change="activeFilters = countFilters($el)"
@@ -125,6 +125,24 @@
   </div>
 
   <div id="filter-panel" class="filter-panel" x-show="filtersOpen" {% if not filters.active_count %}x-cloak{% endif %}>
+    {# Each of these looks at one field only (the search box above looks at all of them). #}
+    <div>
+      <label for="name">ชื่อขึ้นต้นด้วย</label>
+      <input id="name" name="name" type="text" value="{{ filters.name }}" autocomplete="off" maxlength="100" placeholder="เช่น ท" class="control filter-text">
+    </div>
+    <div>
+      <label for="plate">ทะเบียนรถ (มีคำว่า)</label>
+      <input id="plate" name="plate" type="text" value="{{ filters.plate }}" autocomplete="off" maxlength="100" placeholder="เช่น กข" class="control filter-text">
+    </div>
+    <div>
+      <label for="bank">ธนาคาร</label>
+      <select id="bank" name="bank" class="control">
+        <option value="">ทั้งหมด</option>
+        {% for value in bank_options %}
+        <option value="{{ value }}" {% if value|lower == filters.bank|lower %}selected{% endif %}>{% if value == "-" %}- (ไม่มีข้อมูล){% else %}{{ value }}{% endif %}</option>
+        {% endfor %}
+      </select>
+    </div>
     <div>
       <label for="source">ที่มาของข้อมูล</label>
       <select id="source" name="source" class="control">
@@ -162,9 +180,9 @@
     </div>
     {% endif %}
     {# Shown only while at least one filter is set: clears them all (search and sort stay) without a page reload. #}
-    <div class="flex items-end sm:col-span-2 lg:col-span-5" x-show="activeFilters" {% if not filters.active_count %}x-cloak{% endif %}>
+    <div class="flex items-end sm:col-span-2 lg:col-span-4" x-show="activeFilters" {% if not filters.active_count %}x-cloak{% endif %}>
       <button type="button" class="btn btn-outline min-h-10 px-3 text-sm" @click="resetFilters($el.closest('form'))">
-        {% include "components/icon.html" with name="x" class="size-4" %}รีเซ็ตตัวกรอง&nbsp;(<span x-text="activeFilters">{{ filters.active_count }}</span>)
+        {% include "components/icon.html" with name="x" class="size-4" %}<span>รีเซ็ตตัวกรอง (<span x-text="activeFilters">{{ filters.active_count }}</span>)</span>
       </button>
     </div>
   </div>

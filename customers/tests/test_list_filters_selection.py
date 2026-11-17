@@ -7,7 +7,12 @@ from django.http import QueryDict
 from django.urls import reverse
 from django.utils import timezone
 
-from customers.filters import parse_filters, parse_selected_ids, referral_choices
+from customers.filters import (
+    bank_choices,
+    parse_filters,
+    parse_selected_ids,
+    referral_choices,
+)
 from customers.models import Customer
 from customers.queries import pinned_customers, search_customers, visible_customers
 
@@ -39,6 +44,74 @@ def test_filter_by_source(staff, make_customer, params) -> None:
     filters = parse_filters(params(source="excel"), staff)
 
     assert names(search_customers(staff, filters=filters)) == ["excel"]
+
+
+def test_name_filter_matches_the_start_only(staff, make_customer, params) -> None:
+    make_customer(name="ทองดี มีสุข")
+    make_customer(name="สมทรง ใจดี")  # has ท, but not at the start
+    make_customer(name="เทพ ทองคำ")  # starts with เ (first written letter)
+    make_customer(name="Tom Smith")
+
+    def found(value: str) -> list[str]:
+        filters = parse_filters(params(name=value), staff)
+        return names(search_customers(staff, filters=filters))
+
+    assert found("ท") == ["ทองดี มีสุข"]
+    assert found("เท") == ["เทพ ทองคำ"]
+    assert found("tom") == ["Tom Smith"]  # any letter case
+
+
+def test_plate_filter_matches_anywhere_in_the_plate(
+    staff, make_customer, params
+) -> None:
+    make_customer(name="a", license_plate="1กข 1234")
+    make_customer(name="b", license_plate="9ฮฮ 5678")
+
+    filters = parse_filters(params(plate="กข"), staff)
+
+    assert names(search_customers(staff, filters=filters)) == ["a"]
+
+
+def test_bank_filter_is_exact_and_ignores_case(staff, make_customer, params) -> None:
+    make_customer(name="a", bank_name="กสิกรไทย")
+    make_customer(name="b", bank_name="กสิกรไทย สาขาสยาม")
+    make_customer(name="c", bank_name="KBank")
+
+    def found(value: str) -> list[str]:
+        filters = parse_filters(params(bank=value), staff)
+        return names(search_customers(staff, sort="oldest", filters=filters))
+
+    assert found("กสิกรไทย") == ["a"]
+    assert found("kbank") == ["c"]
+
+
+def test_field_filters_combine_and_count(staff, make_customer, params) -> None:
+    make_customer(name="ทองดี", bank_name="กสิกรไทย", license_plate="1กข 1")
+    make_customer(name="ทองคำ", bank_name="ออมสิน", license_plate="1กข 2")
+    make_customer(name="มานี", bank_name="กสิกรไทย", license_plate="1กข 3")
+
+    filters = parse_filters(params(name="ท", bank="กสิกรไทย", plate="กข"), staff)
+
+    assert names(search_customers(staff, filters=filters)) == ["ทองดี"]
+    assert filters.active_count == 3
+
+
+def test_bank_dropdown_never_lists_banks_of_hidden_customers_for_staff(
+    staff, admin, make_customer
+) -> None:
+    make_customer(bank_name="กสิกรไทย")
+    make_customer(bank_name="ธนาคารลับ", is_hidden=True)
+
+    assert bank_choices(visible_customers(staff)) == ["กสิกรไทย"]
+    assert set(bank_choices(visible_customers(admin))) == {"กสิกรไทย", "ธนาคารลับ"}
+
+
+def test_field_filters_never_search_phone(staff, make_customer, params) -> None:
+    make_customer(name="ทดสอบ", phone="0812345678", license_plate="1กข 1")
+
+    filters = parse_filters(params(plate="0812", name="0812"), staff)
+
+    assert search_customers(staff, filters=filters).count() == 0
 
 
 def test_filter_by_referral_ignores_letter_case(staff, make_customer, params) -> None:

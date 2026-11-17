@@ -102,7 +102,7 @@
 
       // Filters (search and sort are not filters). Counted live in the browser,
       // because the filter button sits outside the part HTMX swaps.
-      filterNames: ["source", "referral", "from", "to", "hidden"],
+      filterNames: ["name", "plate", "bank", "source", "referral", "from", "to", "hidden"],
       countFilters: function (form) {
         return this.filterNames.filter(function (name) {
           return form.elements[name] && form.elements[name].value;

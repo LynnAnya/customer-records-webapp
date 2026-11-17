@@ -12,7 +12,12 @@ from django.views.decorators.http import require_GET, require_http_methods, requ
 from audit.models import ActivityLog
 from audit.services import get_client_ip
 from customers import services
-from customers.filters import parse_filters, parse_selected_ids, referral_choices
+from customers.filters import (
+    bank_choices,
+    parse_filters,
+    parse_selected_ids,
+    referral_choices,
+)
 from customers.forms import PublicRegistrationForm
 from customers.models import Customer
 from customers.pdf import build_customers_pdf
@@ -124,6 +129,7 @@ def _table_context(request: HttpRequest) -> dict:
         "filters": filters,
         "source_options": SOURCE_OPTIONS,
         "referral_options": referral_choices(visible_customers(user)),
+        "bank_options": bank_choices(visible_customers(user)),
         "state_query": urlencode(params),
         # Where admin actions return to: this list, same search and page.
         "list_url": _list_url(params, page.number),

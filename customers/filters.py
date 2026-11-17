@@ -13,10 +13,14 @@ from customers.models import Customer
 
 MAX_SELECTED = 1000
 HIDDEN_CHOICES = ("visible", "hidden")
+MAX_TEXT = 100  # longest text accepted in a filter box
 
 
 @dataclass(frozen=True)
 class CustomerFilters:
+    name: str = ""  # name starts with (first written letter, any case)
+    plate: str = ""  # license plate contains
+    bank: str = ""  # exact bank, any case (from the dropdown)
     source: str = ""  # a Customer.CreatedBy value
     referral: str = ""
     date_from: date | None = None
@@ -26,6 +30,9 @@ class CustomerFilters:
     def as_params(self) -> dict[str, str]:
         """Only the filters that are set, as URL parameters."""
         params = {
+            "name": self.name,
+            "plate": self.plate,
+            "bank": self.bank,
             "source": self.source,
             "referral": self.referral,
             "from": self.date_from.isoformat() if self.date_from else "",
@@ -54,8 +61,11 @@ def parse_filters(
     hidden = params.get("hidden", "")
     is_admin = bool(user.is_authenticated and user.is_admin)
     return CustomerFilters(
+        name=params.get("name", "").strip()[:MAX_TEXT],
+        plate=params.get("plate", "").strip()[:MAX_TEXT],
+        bank=params.get("bank", "").strip()[:MAX_TEXT],
         source=source if source in Customer.CreatedBy.values else "",
-        referral=params.get("referral", "").strip()[:150],
+        referral=params.get("referral", "").strip()[:MAX_TEXT],
         date_from=_safe_date(params.get("from")),
         date_to=_safe_date(params.get("to")),
         # Staff never see hidden customers, so this filter does not exist for them.
@@ -66,6 +76,12 @@ def parse_filters(
 def apply_filters(
     customers: QuerySet[Customer], filters: CustomerFilters
 ) -> QuerySet[Customer]:
+    if filters.name:
+        customers = customers.filter(name__istartswith=filters.name)
+    if filters.plate:
+        customers = customers.filter(license_plate__icontains=filters.plate)
+    if filters.bank:
+        customers = customers.filter(bank_name__iexact=filters.bank)
     if filters.source:
         customers = customers.filter(created_by=filters.source)
     if filters.referral:
@@ -85,9 +101,19 @@ def referral_choices(customers: QuerySet[Customer]) -> list[str]:
     Pass `visible_customers(user)`, so staff never learn a referral that only
     hidden customers have.
     """
+    return _distinct_values(customers, "referral")
+
+
+def bank_choices(customers: QuerySet[Customer]) -> list[str]:
+    """Bank names already saved, for the bank dropdown. Same rules as referral."""
+    return _distinct_values(customers, "bank_name")
+
+
+def _distinct_values(customers: QuerySet[Customer], field: str) -> list[str]:
+    """Distinct values of one field in Thai order, each spelling variant once."""
     values = (
-        customers.order_by(Collate("referral", "th-x-icu"))
-        .values_list("referral", flat=True)
+        customers.order_by(Collate(field, "th-x-icu"))
+        .values_list(field, flat=True)
         .distinct()
     )
     seen: set[str] = set()

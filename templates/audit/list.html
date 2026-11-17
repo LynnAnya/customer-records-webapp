@@ -54,7 +54,7 @@
   <div class="sm:col-span-2 lg:col-span-4" x-show="active" {% if not filters.active_count %}x-cloak{% endif %}>
     <button type="button" class="btn btn-outline min-h-10 px-3 text-sm"
             @click="names.forEach(n => $el.closest('form').elements[n].value = ''); $el.closest('form').elements.user.dispatchEvent(new Event('change', { bubbles: true }))">
-      {% include "components/icon.html" with name="x" class="size-4" %}รีเซ็ตตัวกรอง&nbsp;(<span x-text="active">{{ filters.active_count }}</span>)
+      {% include "components/icon.html" with name="x" class="size-4" %}<span>รีเซ็ตตัวกรอง (<span x-text="active">{{ filters.active_count }}</span>)</span>
     </button>
   </div>
 </form>

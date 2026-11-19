@@ -270,7 +270,7 @@
     @apply w-full border-collapse text-left text-base;
   }
   .data-table th {
-    @apply border-b border-line bg-sunken px-3 py-3 text-sm font-semibold whitespace-nowrap text-muted;
+    @apply border-b border-line bg-sunken px-3 py-3 text-base font-semibold whitespace-nowrap text-muted;
   }
   .data-table td {
     @apply border-b border-line px-3 py-3 align-middle;

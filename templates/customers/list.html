@@ -7,7 +7,7 @@
 {% partialdef row %}
 <tr data-row-id="{{ customer.pk }}" class="{% if is_pinned %}is-pinned-row{% if is_last_pinned %} pinned-end{% endif %}{% elif customer.is_hidden %}is-hidden-row{% endif %}">
   <td class="check-cell">
-    <input type="checkbox" class="row-check" {% if is_pinned %}checked{% endif %} :checked="has({{ customer.pk }})" @change="toggle({{ customer.pk }})" aria-label="เลือก {{ customer.name }}">
+    <input type="checkbox" id="pick-{{ customer.pk }}" class="row-check" {% if is_pinned %}checked{% endif %} :checked="has({{ customer.pk }})" @change="toggle({{ customer.pk }})" aria-label="เลือก {{ customer.name }}">
   </td>
   <td class="font-semibold">
     {{ customer.name }}
@@ -45,7 +45,7 @@
 {% partialdef card %}
 <li data-row-id="{{ customer.pk }}" class="card p-4 {% if is_pinned %}is-pinned-row{% elif customer.is_hidden %}is-hidden-row{% endif %}">
   <div class="flex items-start gap-3">
-    <input type="checkbox" class="row-check mt-1 size-6 flex-none" {% if is_pinned %}checked{% endif %} :checked="has({{ customer.pk }})" @change="toggle({{ customer.pk }})" aria-label="เลือก {{ customer.name }}">
+    <input type="checkbox" id="pick-card-{{ customer.pk }}" class="row-check mt-1 size-6 flex-none" {% if is_pinned %}checked{% endif %} :checked="has({{ customer.pk }})" @change="toggle({{ customer.pk }})" aria-label="เลือก {{ customer.name }}">
     <p class="flex-1 text-lg font-semibold leading-snug">{{ customer.name }}</p>
     {% if customer.is_hidden %}<span class="badge badge-muted flex-none">{% include "components/icon.html" with name="eye-off" class="mr-1 size-3.5" %}ซ่อน</span>{% endif %}
   </div>
@@ -232,7 +232,7 @@
       <h2 class="text-xl font-bold">ข้อความสำหรับส่ง</h2>
       <button type="button" class="icon-btn" @click="closeSheet()" aria-label="ปิด">{% include "components/icon.html" with name="x" %}</button>
     </div>
-    <textarea x-ref="sheetText" x-model="sheetText" readonly rows="10" class="control mt-3 h-auto w-full flex-1 resize-none py-3 font-sans leading-relaxed shadow-none" aria-label="ข้อความ"></textarea>
+    <textarea id="share-text" x-ref="sheetText" x-model="sheetText" readonly rows="10" class="control mt-3 h-auto w-full flex-1 resize-none py-3 font-sans leading-relaxed shadow-none" aria-label="ข้อความ"></textarea>
     <div class="mt-4 flex gap-3">
       <button type="button" class="btn btn-primary flex-1" x-show="canShare" @click="shareNow()">{% include "components/icon.html" with name="share" %}แชร์</button>
       <button type="button" class="btn flex-1" :class="canShare ? 'btn-outline' : 'btn-primary'" @click="copyFromSheet()">{% include "components/icon.html" with name="copy" %}คัดลอก</button>
@@ -259,7 +259,7 @@
       <thead>
         <tr>
           <th scope="col" class="check-cell">
-            <input type="checkbox" class="row-check" :checked="allOnPage()" @change="togglePage($event.target.checked)" aria-label="เลือกทุกรายการในหน้านี้">
+            <input type="checkbox" id="pick-page" class="row-check" :checked="allOnPage()" @change="togglePage($event.target.checked)" aria-label="เลือกทุกรายการในหน้านี้">
           </th>
           <th scope="col">
             <button type="button" class="sort-btn" @click="$dispatch('set-sort', '{% if sort == 'name_az' %}name_za{% else %}name_az{% endif %}')">

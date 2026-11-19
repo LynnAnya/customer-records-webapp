@@ -21,7 +21,7 @@
     <span class="block">{{ customer.bank_name }}</span>
     <span class="block text-sm text-muted tabular-nums whitespace-nowrap"><span class="sr-only">เลขที่บัญชี </span>{{ customer.account_number|masked }}</span>
   </td>
-  <td>{{ customer.referral }}</td>
+  <td{% if is_admin %} class="col-spaced"{% endif %}>{{ customer.referral }}</td>
   <td class="whitespace-nowrap text-muted" title="{{ customer.created_at|date:'j F Y H:i' }}">{{ customer.created_at|date:"j M Y" }}</td>
   {% if is_admin %}
   <td class="actions-cell">
@@ -308,7 +308,7 @@
               {% if sort == "bank_az" %}{% include "components/icon.html" with name="arrow-up" class="size-4" %}{% elif sort == "bank_za" %}{% include "components/icon.html" with name="arrow-down" class="size-4" %}{% endif %}
             </button>
           </th>
-          <th scope="col">ผู้แนะนำ</th>
+          <th scope="col"{% if is_admin %} class="col-spaced"{% endif %}>ผู้แนะนำ</th>
           <th scope="col">
             <button type="button" class="sort-btn" @click="$dispatch('set-sort', '{% if sort == 'newest' %}oldest{% else %}newest{% endif %}')">
               วันที่เพิ่ม

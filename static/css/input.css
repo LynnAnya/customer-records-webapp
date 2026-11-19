@@ -313,6 +313,11 @@
     width: 0.01%;
     min-width: 3rem;
   }
+  /* Admin customers table: the referral column sits a little away from the
+     two-line bank column, which otherwise looks crowded next to it. */
+  .data-table :is(th, td).col-spaced {
+    @apply pl-9;
+  }
   /* Text that may wrap at a set width even while the row stays on one line. */
   .data-table .cell-wrap {
     @apply inline-block max-w-32 whitespace-normal;

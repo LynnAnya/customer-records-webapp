@@ -264,6 +264,14 @@
   .control::placeholder {
     @apply text-muted;
   }
+  /* Date boxes: some browsers (iPhone Safari) give them their own minimum width
+     and centre the date. Make them as wide as every other box, date on the left. */
+  .control[type="date"] {
+    @apply w-full min-w-0 appearance-none text-left;
+  }
+  .control[type="date"]::-webkit-date-and-time-value {
+    text-align: left;
+  }
 
   /* Customers table. */
   .data-table {
@@ -334,16 +342,23 @@
     @apply grid size-11 flex-none place-items-center rounded-xl bg-on-accent/20 text-lg font-bold tabular-nums;
   }
 
-  /* Sort and filter: one split bar on phones (like a segmented control). */
-  .sort-filter-bar {
+  /* Two side-by-side choices (sort | filter, the two downloads): one split bar
+     on phones, like a segmented control; separate boxes on wider screens. */
+  .split-bar {
     @apply flex gap-3 max-sm:grid max-sm:min-h-12 max-sm:grid-cols-2 max-sm:gap-0 max-sm:divide-x max-sm:divide-line max-sm:overflow-hidden max-sm:rounded-xl max-sm:border max-sm:border-line max-sm:bg-surface max-sm:shadow-card;
   }
-  .sort-filter-bar > div:focus-within,
-  .sort-filter-bar > button:focus-visible {
+  .split-bar > div:focus-within,
+  .split-bar > button:focus-visible {
     @apply max-sm:bg-accent-soft;
   }
-  .sort-filter-bar .control {
-    @apply max-sm:rounded-none max-sm:border-0 max-sm:bg-transparent max-sm:shadow-none max-sm:ring-0;
+  .split-bar .control,
+  .split-bar .btn {
+    @apply max-sm:min-h-12 max-sm:justify-center max-sm:rounded-none max-sm:border-0 max-sm:bg-transparent max-sm:px-2 max-sm:whitespace-nowrap max-sm:shadow-none max-sm:ring-0;
+  }
+
+  /* A phone card that opens a page (activity log): the whole card is the link. */
+  .link-card {
+    @apply flex items-center gap-3 p-4 transition-colors hover:bg-sunken active:bg-sunken;
   }
 
   /* Phone customer cards. */
@@ -362,8 +377,9 @@
   .card-detail dt {
     @apply text-muted;
   }
+  /* Icon buttons along the bottom of a phone card, equal widths for any count. */
   .card-actions {
-    @apply grid grid-cols-3 divide-x divide-line border-t border-line;
+    @apply grid auto-cols-fr grid-flow-col divide-x divide-line border-t border-line;
   }
   .card-action {
     @apply grid min-h-12 cursor-pointer place-items-center text-muted hover:bg-line/40 hover:text-ink;

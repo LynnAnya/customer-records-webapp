@@ -103,8 +103,7 @@
   {% endif %}
 </div>
 {% if is_admin %}
-{# Phone: floating add button above the bottom tabs. #}
-<a href="{% url 'customer_create' %}" class="btn btn-primary fixed right-4 bottom-20 z-20 size-14 rounded-full px-0 shadow-card lg:hidden" aria-label="เพิ่มลูกค้า" title="เพิ่มลูกค้า">{% include "components/icon.html" with name="plus" class="size-7" %}</a>
+{% url 'customer_create' as create_url %}{% include "components/fab.html" with url=create_url label="เพิ่มลูกค้า" %}
 {% endif %}
 
 {# Search, sort and filters. HTMX swaps only the table; without JavaScript the form still works. #}
@@ -127,7 +126,7 @@
              class="control w-full pl-11">
     </div>
     {# Phones: sort and filter share one bar, split in two like a segmented control. Wider screens: a select and a button. #}
-    <div class="sort-filter-bar">
+    <div class="split-bar">
       <div class="relative flex-1" x-data="{ sortLabel: '' }" x-init="sortLabel = $refs.sort.selectedOptions[0].text">
         <label for="sort" class="sr-only">เรียงตาม</label>
         <span class="pointer-events-none flex h-full items-center justify-center gap-2 font-semibold sm:hidden" aria-hidden="true">

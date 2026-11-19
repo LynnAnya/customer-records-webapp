@@ -81,6 +81,39 @@
   // Ticked customers on the customers page (Alpine): x-data="customerSelection()"
   // The ordered list of IDs lives here, outside the part HTMX swaps, and is kept
   // for this browser tab only (sessionStorage).
+  // Select every character of a text box (iPhones need setSelectionRange).
+  function selectAll(box) {
+    box.focus();
+    box.select();
+    box.setSelectionRange(0, box.value.length);
+  }
+
+  // The older copy command: works in almost every browser and on plain http://,
+  // but only close to a tap. Uses the given box, or a hidden one that is removed
+  // straight away so no account number stays in the page. Returns true on success.
+  function legacyCopy(text, box) {
+    var temporary = !box;
+    if (temporary) {
+      box = document.createElement("textarea");
+      box.value = text;
+      box.setAttribute("readonly", "");
+      box.style.position = "fixed";
+      box.style.top = "0";
+      box.style.opacity = "0";
+      document.body.appendChild(box);
+    }
+    var copied = false;
+    try {
+      selectAll(box);
+      copied = document.execCommand("copy");
+    } catch (error) {
+      copied = false;
+    }
+    if (temporary) box.remove();
+    window.getSelection().removeAllRanges();
+    return copied;
+  }
+
   window.customerSelection = function () {
     function load(key) {
       try {
@@ -211,17 +244,39 @@
         clearTimeout(this._noticeTimer);
         this._noticeTimer = setTimeout(function () { self.notice = ""; }, 3500);
       },
-      // Toolbar Copy: straight to the clipboard; if the browser refuses
-      // (Safari after a network request), show the sheet instead.
+      // Toolbar Copy. Works in any browser, in three layers (feature checks, never browser names):
+      // 1. Modern clipboard. ClipboardItem lets the write start inside the tap, before the text
+      //    arrives, which iPhones require; otherwise writeText after the text arrives.
+      // 2. The older copy command (also works on plain http://).
+      // 3. The sheet with the text, where the person copies with one more tap.
       copy: function () {
         var self = this;
         this.busy = true;
-        this.fetchText("copy")
+        var fetched = this.fetchText("copy");
+        var written;
+        try {
+          if (navigator.clipboard && window.ClipboardItem) {
+            var blob = fetched.then(function (result) {
+              return new Blob([result.text], { type: "text/plain" });
+            });
+            written = navigator.clipboard.write([new ClipboardItem({ "text/plain": blob })]);
+          } else if (navigator.clipboard) {
+            written = fetched.then(function (result) {
+              return navigator.clipboard.writeText(result.text);
+            });
+          }
+        } catch (error) {
+          written = null;
+        }
+        written = written || Promise.reject(new Error("no clipboard"));
+        written.catch(function () {}); // handled below, once the text is here
+        fetched
           .then(function (result) {
-            return navigator.clipboard.writeText(result.text).then(
-              function () { self.flash("คัดลอกแล้ว " + result.count + " ราย"); },
-              function () { self.openSheet(result.text); }
-            );
+            var done = function () { self.flash("คัดลอกแล้ว " + result.count + " ราย"); };
+            return written.then(done, function () {
+              if (legacyCopy(result.text)) done();
+              else self.openSheet(result.text);
+            });
           })
           .catch(function () { self.flash("คัดลอกไม่สำเร็จ กรุณาลองใหม่"); })
           .finally(function () { self.busy = false; });
@@ -247,18 +302,23 @@
       shareNow: function () {
         navigator.share({ text: this.sheetText }).catch(function () {});
       },
+      // The sheet's Copy button runs inside the tap, so every layer is allowed here.
       copyFromSheet: function () {
         var self = this;
         var box = this.$refs.sheetText;
-        navigator.clipboard.writeText(this.sheetText).then(
-          function () { self.flash("คัดลอกแล้ว"); },
-          function () {
-            // Last resort: select the text so the user can copy it by hand.
-            box.focus();
-            box.select();
+        var fallback = function () {
+          if (legacyCopy(self.sheetText, box)) {
+            self.flash("คัดลอกแล้ว");
+          } else {
+            selectAll(box); // last resort: the phone's own Copy menu
             self.flash("เลือกข้อความแล้ว กดคัดลอกได้เลย");
           }
-        );
+        };
+        if (navigator.clipboard && window.isSecureContext) {
+          navigator.clipboard.writeText(this.sheetText).then(function () { self.flash("คัดลอกแล้ว"); }, fallback);
+        } else {
+          fallback();
+        }
       },
       changed: function () {
         this.save();

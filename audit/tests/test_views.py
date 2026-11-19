@@ -242,3 +242,16 @@ def test_viewing_the_log_does_not_write_to_the_log(as_admin) -> None:
     as_admin.get(TABLE)
 
     assert ActivityLog.objects.count() == 0
+
+
+# --- Phone cards ----------------------------------------------------------
+
+
+def test_phone_card_is_one_link_to_the_detail_page(as_admin, admin) -> None:
+    entry = log_action(Action.COPY, user=admin, details={"count": 1})
+
+    page = as_admin.get(TABLE).text
+
+    detail = reverse("activity_log_detail", args=[entry.pk])
+    assert f'<a class="link-card" href="{detail}?back=' in page
+    assert '<span class="sr-only">ดูรายละเอียด</span>' in page

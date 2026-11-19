@@ -10,12 +10,13 @@
     <p class="mt-1 text-muted">ใครทำอะไร เมื่อไร ดูได้อย่างเดียว แก้ไขหรือลบไม่ได้</p>
   </div>
   {# CSV download. The current filters are copied in when the form is sent. #}
-  <form method="post" action="{% url 'activity_log_export' %}" class="flex flex-wrap gap-2"
+  <form method="post" action="{% url 'activity_log_export' %}" class="split-bar max-sm:w-full"
         @submit="['user', 'action', 'from', 'to'].forEach(n => $el.elements[n].value = document.getElementById('log-filters').elements[n].value)" x-data>
     {% csrf_token %}
     <input type="hidden" name="user"><input type="hidden" name="action"><input type="hidden" name="from"><input type="hidden" name="to">
-    <button type="submit" name="scope" value="filtered" class="btn btn-outline">{% include "components/icon.html" with name="file-down" class="size-4.5" %}ดาวน์โหลด CSV ตามตัวกรอง</button>
-    <button type="submit" name="scope" value="all" class="btn btn-outline">{% include "components/icon.html" with name="file-down" class="size-4.5" %}ดาวน์โหลดทั้งหมด</button>
+    {# Phones: one split bar, shorter words; the full words stay for screen readers. #}
+    <button type="submit" name="scope" value="filtered" class="btn btn-outline" aria-label="ดาวน์โหลด CSV ตามตัวกรอง">{% include "components/icon.html" with name="file-down" class="size-4.5" %}<span><span class="max-sm:hidden">ดาวน์โหลด </span>CSV ตามตัวกรอง</span></button>
+    <button type="submit" name="scope" value="all" class="btn btn-outline" aria-label="ดาวน์โหลดทั้งหมด">{% include "components/icon.html" with name="file-down" class="size-4.5" %}<span><span class="max-sm:hidden">ดาวน์โหลด</span>ทั้งหมด</span></button>
   </form>
 </div>
 
@@ -103,17 +104,22 @@
     </table>
   </div>
 
-  {# Phone: cards #}
+  {# Phone: the whole card opens the detail page; a large arrow on the right shows that. #}
   <ul class="flex flex-col gap-3 md:hidden">
     {% for entry in page.object_list %}
-    <li class="card p-4">
-      <div class="flex items-start justify-between gap-3">
-        <span class="badge {% if entry.action|is_alert %}badge-danger{% endif %}">{{ entry.action|action_label }}</span>
-        <span class="flex-none text-sm text-muted" title="{{ entry.created_at|date:'j F Y H:i:s' }}">{{ entry.created_at|ago }}</span>
-      </div>
-      <p class="mt-2"><span class="font-semibold">{{ entry.username|default:"-" }}</span>{% if entry.user and entry.user.get_full_name %}<span class="text-muted"> ({{ entry.user.get_full_name }})</span>{% endif %}</p>
-      {% if entry.details|describe %}<p class="mt-1 text-muted">{{ entry.details|describe }}</p>{% endif %}
-      <a class="mt-2 inline-flex min-h-10 items-center gap-1 font-semibold text-accent-strong" href="{% url 'activity_log_detail' entry.pk %}?back={{ page_url|urlencode }}">ดูรายละเอียด{% include "components/icon.html" with name="chevron-right" class="size-4" %}</a>
+    <li class="card overflow-hidden p-0">
+      <a class="link-card" href="{% url 'activity_log_detail' entry.pk %}?back={{ page_url|urlencode }}">
+        <div class="min-w-0 flex-1">
+          <div class="flex items-center justify-between gap-3">
+            <span class="badge {% if entry.action|is_alert %}badge-danger{% endif %}">{{ entry.action|action_label }}</span>
+            <span class="flex-none text-sm text-muted" title="{{ entry.created_at|date:'j F Y H:i:s' }}">{{ entry.created_at|ago }}</span>
+          </div>
+          <p class="mt-2"><span class="font-semibold">{{ entry.username|default:"-" }}</span>{% if entry.user and entry.user.get_full_name %}<span class="text-muted"> ({{ entry.user.get_full_name }})</span>{% endif %}</p>
+          {% if entry.details|describe %}<p class="mt-0.5 line-clamp-2 text-sm text-muted">{{ entry.details|describe }}</p>{% endif %}
+          <span class="sr-only">ดูรายละเอียด</span>
+        </div>
+        <span class="flex-none text-muted">{% include "components/icon.html" with name="chevron-right" class="size-7" %}</span>
+      </a>
     </li>
     {% endfor %}
   </ul>

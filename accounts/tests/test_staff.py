@@ -572,3 +572,24 @@ def test_settings_menu_holds_theme_and_account(client, staff) -> None:
     assert 'href="/account/"' in page
     assert "ธีม" in page
     assert f'href="{CHANGE}"' not in page
+
+
+# --- Phone cards ----------------------------------------------------------
+
+
+def test_phone_cards_use_icon_buttons_with_thai_labels(
+    client, admin, second_admin, staff
+) -> None:
+    client.force_login(admin)
+
+    page = client.get(LIST).text
+    name = staff.username
+
+    for label in (f"แก้ไข {name}", f"ตั้งรหัสผ่านใหม่ {name}", f"ปิดใช้งาน {name}"):
+        assert f'aria-label="{label}"' in page
+    # Own card: edit only. Another admin's card: no buttons at all.
+    assert f'aria-label="แก้ไข {admin.username}"' in page
+    assert f'aria-label="ปิดใช้งาน {admin.username}"' not in page
+    assert f'aria-label="แก้ไข {second_admin.username}"' not in page
+    # Add button: floating on phones, the same one as on the customers page.
+    assert 'aria-label="เพิ่มพนักงาน"' in page

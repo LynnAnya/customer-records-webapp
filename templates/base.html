@@ -71,7 +71,7 @@
       </div>
     </nav>
 
-    <form method="post" action="{% url 'logout' %}" @submit="sessionStorage.removeItem('selected')" class="mt-auto pt-4">
+    <form method="post" action="{% url 'logout' %}" @submit="sessionStorage.clear()" class="mt-auto pt-4">
       {% csrf_token %}
       <button type="submit" class="rail-item" title="ออกจากระบบ">
         {% include "components/icon.html" with name="log-out" %}
@@ -119,7 +119,7 @@
       {% include "components/icon.html" with name="settings" class="size-6" %}
       ตั้งค่า
     </button>
-    <form method="post" action="{% url 'logout' %}" @submit="sessionStorage.removeItem('selected')" class="flex flex-1">
+    <form method="post" action="{% url 'logout' %}" @submit="sessionStorage.clear()" class="flex flex-1">
       {% csrf_token %}
       <button type="submit" class="tab-item">
         {% include "components/icon.html" with name="log-out" class="size-6" %}

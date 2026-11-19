@@ -324,7 +324,40 @@
     @apply sticky top-14 z-10 mt-4 flex flex-wrap items-center justify-between gap-x-3 gap-y-2 rounded-2xl bg-accent px-4 py-2.5 text-on-accent shadow-card lg:top-3;
   }
   .bar-btn {
-    @apply inline-flex min-h-10 cursor-pointer items-center gap-1.5 rounded-lg bg-on-accent/15 px-3 font-semibold hover:bg-on-accent/25 disabled:cursor-wait disabled:opacity-60;
+    @apply inline-flex min-h-10 cursor-pointer items-center gap-1.5 rounded-lg bg-on-accent/15 px-3 font-semibold hover:bg-on-accent/25 disabled:cursor-wait disabled:opacity-60 max-md:size-11 max-md:justify-center max-md:px-0;
+  }
+  /* Phones show icons only; the word stays for screen readers. */
+  .bar-label {
+    @apply max-md:sr-only;
+  }
+  .selection-count {
+    @apply grid size-11 flex-none place-items-center rounded-xl bg-on-accent/20 text-lg font-bold tabular-nums;
+  }
+
+  /* Phone customer cards. */
+  .card-toggle {
+    @apply -mt-1.5 -mr-2 grid size-11 flex-none cursor-pointer place-items-center rounded-lg text-muted hover:bg-line/50 hover:text-ink;
+  }
+  .card-details {
+    @apply space-y-2.5 border-t border-line px-4 py-3;
+  }
+  .card-detail {
+    @apply grid grid-cols-[1rem_5.5rem_1fr] items-start gap-x-2.5 text-base;
+  }
+  .card-detail > svg {
+    @apply mt-1 text-muted;
+  }
+  .card-detail dt {
+    @apply text-muted;
+  }
+  .card-actions {
+    @apply grid grid-cols-3 divide-x divide-line border-t border-line;
+  }
+  .card-action {
+    @apply grid min-h-12 cursor-pointer place-items-center text-muted hover:bg-line/40 hover:text-ink;
+  }
+  .card-action.text-danger {
+    @apply text-danger hover:text-danger;
   }
   .filter-panel {
     @apply mt-3 grid gap-4 rounded-2xl border border-line bg-surface p-4 shadow-card sm:grid-cols-2 lg:grid-cols-4;

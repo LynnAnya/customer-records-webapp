@@ -246,3 +246,44 @@ def test_full_page_greets_and_keeps_the_search_text(
 
     assert "สวัสดี นิสา" in page
     assert 'value="สมชาย"' in page
+
+
+# --- Phone cards ----------------------------------------------------------
+
+
+def test_phone_card_has_summary_details_and_a_toggle(
+    client, admin, make_customer
+) -> None:
+    customer = make_customer(phone=PHONE, account_number=ACCOUNT)
+    client.force_login(admin)
+
+    page = client.get(TABLE).text
+
+    assert f'aria-controls="card-details-{customer.pk}"' in page
+    assert f'id="card-details-{customer.pk}"' in page
+    assert "วันที่เพิ่ม" in page and "ผู้แนะนำ" in page
+    assert "•••• 3210" in page and ACCOUNT not in page
+
+
+def test_staff_phone_card_never_has_the_phone(client, staff, make_customer) -> None:
+    make_customer(phone=PHONE)
+    client.force_login(staff)
+
+    page = client.get(TABLE).text
+
+    assert PHONE not in page
+    assert "เบอร์โทร" not in page
+    assert 'class="card-actions"' not in page
+
+
+def test_icon_only_buttons_keep_thai_labels(client, admin, make_customer) -> None:
+    customer = make_customer(name="สมชาย")
+    client.force_login(admin)
+
+    page = client.get(LIST).text
+
+    for label in ("แก้ไข สมชาย", "ซ่อน สมชาย", "ลบ สมชาย"):
+        assert f'aria-label="{label}"' in page
+    for word in ("คัดลอก", "PDF", "ซ่อน", "แสดง", "ลบ"):
+        assert f'<span class="bar-label">{word}</span>' in page
+    assert customer.pk

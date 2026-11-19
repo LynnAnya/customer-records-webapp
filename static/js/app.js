@@ -82,14 +82,19 @@
   // The ordered list of IDs lives here, outside the part HTMX swaps, and is kept
   // for this browser tab only (sessionStorage).
   window.customerSelection = function () {
-    var saved = [];
-    try {
-      saved = JSON.parse(sessionStorage.getItem("selected") || "[]");
-    } catch (error) {
-      saved = [];
+    function load(key) {
+      try {
+        var value = JSON.parse(sessionStorage.getItem(key) || "[]");
+        return Array.isArray(value) ? value : [];
+      } catch (error) {
+        return [];
+      }
     }
     return {
-      ids: Array.isArray(saved) ? saved : [],
+      ids: load("selected"),
+      // Phone cards the user opened. Kept here, outside the swapped table,
+      // so the 10-second refresh, search and paging do not close them.
+      openCards: load("openCards"),
       filtersOpen: false,
       activeFilters: 0,
       // Copy / Share
@@ -119,6 +124,17 @@
       init: function () {
         // After a page reload the server does not know the ticks yet.
         if (this.ids.length) this.refresh();
+      },
+      isOpen: function (id) {
+        return this.openCards.indexOf(id) !== -1;
+      },
+      toggleOpen: function (id) {
+        if (this.isOpen(id)) {
+          this.openCards = this.openCards.filter(function (other) { return other !== id; });
+        } else {
+          this.openCards.push(id);
+        }
+        sessionStorage.setItem("openCards", JSON.stringify(this.openCards));
       },
       has: function (id) {
         return this.ids.indexOf(id) !== -1;

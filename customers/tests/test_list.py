@@ -288,3 +288,16 @@ def test_icon_only_buttons_keep_thai_labels(client, admin, make_customer) -> Non
     for word in ("คัดลอก", "PDF", "ซ่อน", "แสดง", "ลบ"):
         assert f'<span class="bar-label">{word}</span>' in page
     assert customer.pk
+
+
+def test_desktop_table_shows_the_account_under_the_bank(
+    client, staff, make_customer
+) -> None:
+    make_customer(bank_name="กรุงไทย", account_number=ACCOUNT)
+    client.force_login(staff)
+
+    page = client.get(TABLE).text
+
+    assert "ธนาคาร / บัญชี" in page
+    assert '<span class="block">กรุงไทย</span>' in page
+    assert '<span class="sr-only">เลขที่บัญชี </span>•••• 3210' in page

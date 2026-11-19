@@ -9,7 +9,7 @@
   <h1 class="mt-2 text-3xl font-bold leading-snug">{{ entry.action|action_label }}</h1>
   <p class="mt-1 text-muted">{{ entry.created_at|date:"j F Y H:i:s" }} ({{ entry.created_at|ago }})</p>
 
-  <dl class="card mt-5 overflow-hidden">
+  <dl class="card info-compact mt-5 overflow-hidden">
     <div class="info-row"><dt>ผู้ใช้</dt><dd>{{ entry.username|default:"-" }}{% if entry.user and entry.user.get_full_name %} <span class="text-muted">({{ entry.user.get_full_name }})</span>{% endif %}</dd></div>
     <div class="info-row"><dt>การกระทำ</dt><dd><span class="badge {% if entry.action|is_alert %}badge-danger{% endif %}">{{ entry.action|action_label }}</span></dd></div>
     {% if entry.details.count %}<div class="info-row"><dt>จำนวน</dt><dd class="tabular-nums">{{ entry.details.count }} ราย</dd></div>{% endif %}

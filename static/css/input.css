@@ -431,6 +431,13 @@
   .info-row dd {
     @apply min-w-0 text-base font-semibold break-words text-ink sm:text-lg;
   }
+  /* Log detail on phones: a narrower label column, so values sit further left. */
+  .info-compact .info-row {
+    @apply max-sm:gap-3;
+  }
+  .info-compact .info-row dt {
+    @apply max-sm:w-24;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

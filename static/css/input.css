@@ -420,15 +420,16 @@
     @apply pointer-events-none opacity-40;
   }
 
-  /* Read-only label/value rows (account page). */
+  /* Read-only label/value rows (account page, log detail). Label and value
+     share one line on every screen; a long value wraps under itself. */
   .info-row {
-    @apply flex flex-col gap-0.5 border-b border-line px-5 py-4 last:border-b-0 sm:flex-row sm:items-center sm:gap-6 sm:px-6;
+    @apply flex items-baseline gap-4 border-b border-line px-5 py-3.5 last:border-b-0 sm:items-center sm:gap-6 sm:px-6 sm:py-4;
   }
   .info-row dt {
-    @apply text-sm font-medium text-muted sm:w-48 sm:flex-none sm:text-base;
+    @apply w-32 flex-none text-sm font-medium text-muted sm:w-48 sm:text-base;
   }
   .info-row dd {
-    @apply text-lg font-semibold text-ink;
+    @apply min-w-0 text-base font-semibold break-words text-ink sm:text-lg;
   }
 }
 

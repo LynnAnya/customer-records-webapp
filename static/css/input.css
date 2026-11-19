@@ -298,6 +298,21 @@
     @apply sticky right-0 px-2 text-center whitespace-nowrap;
     background: inherit;
   }
+  /* Even spacing: every column gets the same extra width, so the gaps between
+     columns match. Only used while the table fits on one line per cell; app.js
+     (evenColumns) adds the class, or leaves the normal wrapping layout. */
+  .data-table.even-cols th {
+    width: 1%;
+  }
+  .data-table.even-cols td {
+    @apply whitespace-nowrap;
+  }
+  /* The tickbox column keeps its own size: a tiny share means it gets almost
+     none of the extra width (a fixed width would take all of it instead). */
+  .data-table.even-cols th.check-cell {
+    width: 0.01%;
+    min-width: 3rem;
+  }
   .data-table th.actions-cell {
     @apply bg-sunken;
   }

@@ -49,6 +49,27 @@
     root.classList.toggle("rail-collapsed", collapsed);
   }
 
+  // Tables: try even column spacing (the same extra width for every column);
+  // keep it only if the table still fits, otherwise use the normal layout,
+  // which wraps long text. Runs on load, resize, sidebar changes and HTMX swaps.
+  function evenColumns() {
+    document.querySelectorAll(".data-table").forEach(function (table) {
+      var box = table.parentElement;
+      table.classList.add("even-cols");
+      if (!box.clientWidth || table.scrollWidth > box.clientWidth + 1) {
+        table.classList.remove("even-cols");
+      }
+    });
+  }
+  var evenTimer;
+  function evenColumnsSoon(delay) {
+    clearTimeout(evenTimer);
+    evenTimer = setTimeout(evenColumns, delay);
+  }
+  document.addEventListener("DOMContentLoaded", evenColumns);
+  document.addEventListener("htmx:afterSwap", evenColumns);
+  window.addEventListener("resize", function () { evenColumnsSoon(100); });
+
   applyTheme();
   applySidebar(localStorage.getItem("sidebar") === "collapsed");
   darkMedia.addEventListener("change", applyTheme);
@@ -74,6 +95,7 @@
         this.collapsed = value;
         localStorage.setItem("sidebar", value ? "collapsed" : "open");
         applySidebar(value);
+        evenColumnsSoon(320); // after the sidebar has finished resizing
         if (value) {
           this.settingsOpen = false;
           this.themeOpen = false;

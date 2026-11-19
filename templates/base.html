@@ -1,5 +1,6 @@
 <!DOCTYPE html>
-<html lang="th">
+{# The account's theme: app.js applies it before paint. "dark" is also set here, so it works without JavaScript. #}
+<html lang="th" data-theme="{{ request.user.theme }}" data-theme-url="{% url 'set_theme' %}"{% if request.user.theme == "dark" %} class="dark"{% endif %}>
 <head>
   {% include "components/head.html" %}
   <title>{% block title %}ระบบข้อมูลลูกค้า{% endblock %} · Customer Records</title>

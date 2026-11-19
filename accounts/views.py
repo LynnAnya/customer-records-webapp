@@ -1,13 +1,29 @@
 from django.contrib import messages
 from django.contrib.auth import update_session_auth_hash
-from django.http import HttpRequest, HttpResponse
+from django.http import HttpRequest, HttpResponse, HttpResponseBadRequest
 from django.shortcuts import redirect, render
 from django.views.decorators.debug import sensitive_post_parameters
-from django.views.decorators.http import require_GET, require_http_methods
+from django.views.decorators.http import require_GET, require_http_methods, require_POST
 
 from accounts import services
 from accounts.forms import ThaiPasswordChangeForm
+from accounts.models import User
 from audit.services import get_client_ip
+
+
+@require_POST
+def set_theme(request: HttpRequest) -> HttpResponse:
+    """Save the logged-in person's theme on their account (both roles).
+
+    Not written to the activity log: a display preference, not data access.
+    """
+    theme = request.POST.get("theme", "")
+    if theme not in User.Theme.values:
+        return HttpResponseBadRequest()
+    if request.user.theme != theme:
+        request.user.theme = theme
+        request.user.save(update_fields=["theme"])
+    return HttpResponse(status=204)
 
 
 @require_GET

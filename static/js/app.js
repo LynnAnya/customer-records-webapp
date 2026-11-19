@@ -1,17 +1,42 @@
 // Loaded in <head> without defer, so the theme and sidebar state are applied
 // before the page is painted (no flash).
 //
-// Stored in the browser only:
-//   localStorage "theme"   = "light" | "dark" | "system"
-//   localStorage "sidebar" = "collapsed" | "open"
+// Theme ("light" | "dark" | "system"):
+//   Logged-in pages: saved on the person's account. The server writes it into
+//   <html data-theme>, so it follows the person, not the browser.
+//   Public pages (login, QR form): no account, so the browser keeps a copy in
+//   localStorage "theme" (the last theme used on this device).
+// Sidebar: localStorage "sidebar" = "collapsed" | "open" (this device only).
 (function () {
   var root = document.documentElement;
   var darkMedia = window.matchMedia("(prefers-color-scheme: dark)");
   var desktopMedia = window.matchMedia("(min-width: 1024px)");
 
-  function storedTheme() {
-    var value = localStorage.getItem("theme");
+  function validTheme(value) {
     return value === "light" || value === "dark" ? value : "system";
+  }
+
+  function storedTheme() {
+    var account = root.dataset.theme;
+    if (account) {
+      localStorage.setItem("theme", validTheme(account)); // copy for public pages
+      return validTheme(account);
+    }
+    return validTheme(localStorage.getItem("theme"));
+  }
+
+  // Save a new choice on the account (logged-in pages only). The CSRF token is
+  // taken from the logout form, which every logged-in page has.
+  function saveTheme(value) {
+    var url = root.dataset.themeUrl;
+    var token = document.querySelector("[name=csrfmiddlewaretoken]");
+    if (!url || !token) return;
+    fetch(url, {
+      method: "POST",
+      credentials: "same-origin",
+      headers: { "X-CSRFToken": token.value },
+      body: new URLSearchParams({ theme: value }),
+    }).catch(function () {});
   }
 
   function applyTheme() {
@@ -72,8 +97,10 @@
       },
       setTheme: function (value) {
         this.theme = value;
+        root.dataset.theme = value;
         localStorage.setItem("theme", value);
         applyTheme();
+        saveTheme(value);
       },
     };
   };

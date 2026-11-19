@@ -15,6 +15,7 @@ urlpatterns = [
     path("logout/", LogoutView.as_view(), name="logout"),
     path("account/", views.account, name="account"),
     path("account/password/", views.password_change, name="password_change"),
+    path("account/theme/", views.set_theme, name="set_theme"),
     # Admin only
     path("staff/", views_staff.staff_list, name="staff_list"),
     path("staff/new/", views_staff.staff_create, name="staff_create"),

@@ -1,4 +1,22 @@
-{# Buttons for one account. Admins never act on another admin; your own password is changed on the account page. #}
+{% comment %} Buttons for one account. Admins never act on another admin; your own password is changed on the account page.
+   icons=True: icon-only buttons for the phone card strip (labels stay for screen readers). {% endcomment %}
+{% if icons %}
+{% if person.can_edit %}
+<a class="card-action" href="{% url 'staff_edit' person.pk %}" aria-label="แก้ไข {{ person.username }}" title="แก้ไข">{% include "components/icon.html" with name="pencil" %}</a>
+{% endif %}
+{% if person.can_manage %}
+<a class="card-action" href="{% url 'staff_reset_password' person.pk %}" aria-label="ตั้งรหัสผ่านใหม่ {{ person.username }}" title="ตั้งรหัสผ่านใหม่">{% include "components/icon.html" with name="key" %}</a>
+<form method="post" action="{% url 'staff_set_active' person.pk %}" class="flex">
+  {% csrf_token %}
+  <input type="hidden" name="active" value="{% if person.is_active %}0{% else %}1{% endif %}">
+  {% if person.is_active %}
+  <button type="submit" class="card-action text-danger flex-1" aria-label="ปิดใช้งาน {{ person.username }}" title="ปิดใช้งาน">{% include "components/icon.html" with name="user-x" %}</button>
+  {% else %}
+  <button type="submit" class="card-action flex-1" aria-label="เปิดใช้งาน {{ person.username }}" title="เปิดใช้งาน">{% include "components/icon.html" with name="user-check" %}</button>
+  {% endif %}
+</form>
+{% endif %}
+{% else %}
 {% if person.can_edit %}
 <a class="btn btn-outline min-h-10 px-3 text-sm" href="{% url 'staff_edit' person.pk %}">แก้ไข</a>
 {% endif %}
@@ -13,4 +31,5 @@
   <button type="submit" class="btn btn-outline min-h-10 px-3 text-sm">เปิดใช้งาน</button>
   {% endif %}
 </form>
+{% endif %}
 {% endif %}

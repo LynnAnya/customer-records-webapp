@@ -113,7 +113,7 @@
           if (form.elements[name]) form.elements[name].value = "";
         });
         // One change event: HTMX reloads the table, Alpine recounts.
-        form.elements.source.dispatchEvent(new Event("change", { bubbles: true }));
+        form.dispatchEvent(new Event("change", { bubbles: true }));
       },
 
       init: function () {

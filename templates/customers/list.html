@@ -143,6 +143,7 @@
         {% endfor %}
       </select>
     </div>
+    {% if user.is_admin %}
     <div>
       <label for="source">ที่มาของข้อมูล</label>
       <select id="source" name="source" class="control">
@@ -152,6 +153,7 @@
         {% endfor %}
       </select>
     </div>
+    {% endif %}
     <div>
       <label for="referral">ผู้แนะนำ</label>
       <select id="referral" name="referral" class="control">

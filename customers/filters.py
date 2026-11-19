@@ -68,7 +68,8 @@ def parse_filters(
         name=params.get("name", "").strip()[:MAX_TEXT],
         plate=params.get("plate", "").strip()[:MAX_TEXT],
         bank=params.get("bank", "").strip()[:MAX_TEXT],
-        source=source if source in Customer.CreatedBy.values else "",
+        # Where a customer came from is an admin filter; staff do not get it.
+        source=source if is_admin and source in Customer.CreatedBy.values else "",
         referral=params.get("referral", "").strip()[:MAX_TEXT],
         date_from=_safe_date(params.get("from")),
         date_to=_safe_date(params.get("to")),

@@ -37,13 +37,25 @@ def params():
 # --- Filters --------------------------------------------------------------
 
 
-def test_filter_by_source(staff, make_customer, params) -> None:
+def test_admin_can_filter_by_source(admin, make_customer, params) -> None:
     make_customer(name="qr", created_by=Customer.CreatedBy.QR_CODE)
     make_customer(name="excel", created_by=Customer.CreatedBy.EXCEL)
 
+    filters = parse_filters(params(source="excel"), admin)
+
+    assert names(search_customers(admin, filters=filters)) == ["excel"]
+
+
+def test_staff_have_no_source_filter(client, staff, make_customer, params) -> None:
+    make_customer(name="qr", created_by=Customer.CreatedBy.QR_CODE)
+    make_customer(name="excel", created_by=Customer.CreatedBy.EXCEL)
+    client.force_login(staff)
+
     filters = parse_filters(params(source="excel"), staff)
 
-    assert names(search_customers(staff, filters=filters)) == ["excel"]
+    assert filters.source == "" and filters.active_count == 0
+    assert len(client.get(TABLE, {"source": "excel"}).context["page"]) == 2
+    assert 'name="source"' not in client.get(LIST).text
 
 
 def test_name_filter_follows_the_first_consonant(staff, make_customer, params) -> None:
@@ -194,13 +206,13 @@ def test_invalid_filter_values_are_ignored(client, admin, make_customer, bad) ->
     assert len(response.context["page"].object_list) == 1
 
 
-def test_filters_combine_with_search(staff, make_customer, params) -> None:
+def test_filters_combine_with_search(admin, make_customer, params) -> None:
     make_customer(name="สมชาย", created_by=Customer.CreatedBy.QR_CODE)
     make_customer(name="สมชาย", created_by=Customer.CreatedBy.EXCEL)
 
-    filters = parse_filters(params(source="qr_code"), staff)
+    filters = parse_filters(params(source="qr_code"), admin)
 
-    assert search_customers(staff, "สมชาย", filters=filters).count() == 1
+    assert search_customers(admin, "สมชาย", filters=filters).count() == 1
 
 
 def test_referral_dropdown_lists_each_spelling_once(staff, make_customer) -> None:
@@ -318,11 +330,11 @@ def test_unticking_puts_the_row_back_in_the_results(
 
 
 def test_polling_url_keeps_search_sort_filters_and_page(
-    client, staff, make_customer
+    client, admin, make_customer
 ) -> None:
     for index in range(27):
         make_customer(name=f"สมชาย{index}", created_by=Customer.CreatedBy.EXCEL)
-    client.force_login(staff)
+    client.force_login(admin)
 
     state = {
         "q": "สมชาย",
@@ -343,10 +355,10 @@ def test_polling_url_keeps_search_sort_filters_and_page(
 
 
 def test_address_bar_url_never_contains_selected_ids(
-    client, staff, make_customer
+    client, admin, make_customer
 ) -> None:
     a = make_customer()
-    client.force_login(staff)
+    client.force_login(admin)
 
     response = client.get(TABLE, {"selected": str(a.pk), "source": "admin"})
 

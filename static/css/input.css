@@ -334,6 +334,18 @@
     @apply grid size-11 flex-none place-items-center rounded-xl bg-on-accent/20 text-lg font-bold tabular-nums;
   }
 
+  /* Sort and filter: one split bar on phones (like a segmented control). */
+  .sort-filter-bar {
+    @apply flex gap-3 max-sm:grid max-sm:min-h-12 max-sm:grid-cols-2 max-sm:gap-0 max-sm:divide-x max-sm:divide-line max-sm:overflow-hidden max-sm:rounded-xl max-sm:border max-sm:border-line max-sm:bg-surface max-sm:shadow-card;
+  }
+  .sort-filter-bar > div:focus-within,
+  .sort-filter-bar > button:focus-visible {
+    @apply max-sm:bg-accent-soft;
+  }
+  .sort-filter-bar .control {
+    @apply max-sm:rounded-none max-sm:border-0 max-sm:bg-transparent max-sm:shadow-none max-sm:ring-0;
+  }
+
   /* Phone customer cards. */
   .card-toggle {
     @apply -mt-1.5 -mr-2 grid size-11 flex-none cursor-pointer place-items-center rounded-lg text-muted hover:bg-line/50 hover:text-ink;

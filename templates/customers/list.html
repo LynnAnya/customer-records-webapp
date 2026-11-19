@@ -41,7 +41,8 @@
 </tr>
 {% endpartialdef %}
 
-{# One phone card: name and a short summary; the arrow opens the other details. Admins get three icon buttons. #}
+{% comment %} One phone card: name and a short summary; the arrow opens the other details. Admins get three icon buttons.
+   Details use the hidden attribute, not x-show: HTMX copies style back onto same-id elements after a swap. {% endcomment %}
 {% partialdef card %}
 <li data-row-id="{{ customer.pk }}" class="card overflow-hidden p-0 {% if is_pinned %}is-pinned-row{% elif customer.is_hidden %}is-hidden-row{% endif %}">
   <div class="flex items-start gap-3 p-4">
@@ -64,7 +65,7 @@
       <span class="transition-transform" :class="isOpen({{ customer.pk }}) && 'rotate-180'">{% include "components/icon.html" with name="chevron-down" %}</span>
     </button>
   </div>
-  <dl id="card-details-{{ customer.pk }}" class="card-details" x-show="isOpen({{ customer.pk }})" x-cloak>
+  <dl id="card-details-{{ customer.pk }}" class="card-details" hidden :hidden="!isOpen({{ customer.pk }})">
     <div class="card-detail">{% include "components/icon.html" with name="car" class="size-4" %}<dt>ทะเบียนรถ</dt><dd>{{ customer.license_plate }}</dd></div>
     <div class="card-detail">{% include "components/icon.html" with name="landmark" class="size-4" %}<dt>ธนาคาร</dt><dd>{{ customer.bank_name }} <span class="ml-1 tabular-nums">{{ customer.account_number|masked }}</span></dd></div>
     {% if show_phone %}<div class="card-detail">{% include "components/icon.html" with name="phone" class="size-4" %}<dt>เบอร์โทร</dt><dd class="tabular-nums">{{ customer.phone }}{% if customer.has_duplicate_phone %} <span class="badge badge-signal ml-1">เบอร์ซ้ำ</span>{% endif %}</dd></div>{% endif %}
@@ -125,18 +126,22 @@
              placeholder="{% if show_phone %}ค้นหาชื่อ ทะเบียนรถ เบอร์โทร ธนาคาร เลขที่บัญชี ผู้แนะนำ{% else %}ค้นหาชื่อ ทะเบียนรถ ธนาคาร เลขที่บัญชี ผู้แนะนำ{% endif %}"
              class="control w-full pl-11">
     </div>
-    <div class="flex gap-3">
-      <div class="flex-1">
+    {# Phones: sort and filter share one bar, split in two like a segmented control. Wider screens: a select and a button. #}
+    <div class="sort-filter-bar">
+      <div class="relative flex-1" x-data="{ sortLabel: '' }" x-init="sortLabel = $refs.sort.selectedOptions[0].text">
         <label for="sort" class="sr-only">เรียงตาม</label>
-        <select id="sort" name="sort" x-ref="sort" class="control w-full sm:w-48">
+        <span class="pointer-events-none flex h-full items-center justify-center gap-2 font-semibold sm:hidden" aria-hidden="true">
+          {% include "components/icon.html" with name="arrow-up-down" class="size-4.5" %}<span x-text="sortLabel">{% for key, label in sort_options %}{% if key == sort %}{{ label }}{% endif %}{% endfor %}</span>
+        </span>
+        <select id="sort" name="sort" x-ref="sort" @change="sortLabel = $el.selectedOptions[0].text" class="control w-full sm:w-48 max-sm:absolute max-sm:inset-0 max-sm:h-full max-sm:cursor-pointer max-sm:opacity-0">
           {% for key, label in sort_options %}
           <option value="{{ key }}" {% if key == sort %}selected{% endif %}>{{ label }}</option>
           {% endfor %}
         </select>
       </div>
-      <button type="button" class="control flex cursor-pointer items-center gap-2 font-semibold" @click="filtersOpen = !filtersOpen" :aria-expanded="filtersOpen" aria-controls="filter-panel">
+      <button type="button" class="control flex cursor-pointer items-center gap-2 font-semibold max-sm:justify-center" @click="filtersOpen = !filtersOpen" :aria-expanded="filtersOpen" aria-controls="filter-panel" title="ตัวกรอง">
         {% include "components/icon.html" with name="filter" class="size-4.5" %}
-        ตัวกรอง
+        <span class="max-sm:sr-only">ตัวกรอง</span>
         <span class="badge" x-show="activeFilters" x-text="activeFilters" {% if not filters.active_count %}x-cloak{% endif %}>{{ filters.active_count }}</span>
       </button>
     </div>

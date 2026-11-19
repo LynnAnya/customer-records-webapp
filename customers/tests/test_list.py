@@ -260,7 +260,8 @@ def test_phone_card_has_summary_details_and_a_toggle(
     page = client.get(TABLE).text
 
     assert f'aria-controls="card-details-{customer.pk}"' in page
-    assert f'id="card-details-{customer.pk}"' in page
+    # Closed until the arrow is tapped, also in the HTML itself (no JavaScript yet).
+    assert f'id="card-details-{customer.pk}" class="card-details" hidden' in page
     assert "วันที่เพิ่ม" in page and "ผู้แนะนำ" in page
     assert "•••• 3210" in page and ACCOUNT not in page
 

@@ -67,7 +67,6 @@ class Command(BaseCommand):
                 referral=rng.choice(REFERRALS),
                 is_hidden=rng.random() < 0.1,
                 created_by=rng.choice(list(Customer.CreatedBy)),
-                consent_at=now,
             )
             if customer.created_by == Customer.CreatedBy.EXCEL and rng.random() < 0.4:
                 # Old Excel rows sometimes miss a value; the import saves "-".

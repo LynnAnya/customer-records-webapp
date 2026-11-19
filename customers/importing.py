@@ -9,7 +9,6 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from django.db import transaction
-from django.utils import timezone
 from openpyxl import load_workbook
 
 from audit.models import ActivityLog
@@ -190,13 +189,10 @@ def import_customers(path: Path, *, dry_run: bool) -> ImportResult:
             result.created = 0
         return result
 
-    # Decided 2026-11-17: imported customers count as consented at import time.
-    imported_at = timezone.now()
     with transaction.atomic():
         for form in forms:
             customer = form.save(commit=False)
             customer.created_by = Customer.CreatedBy.EXCEL
-            customer.consent_at = imported_at
             customer.save()
         log_action(
             ActivityLog.Action.EXCEL_IMPORT,

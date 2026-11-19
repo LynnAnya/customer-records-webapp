@@ -364,15 +364,6 @@
   .info-row dd {
     @apply text-lg font-semibold text-ink;
   }
-
-  /* Consent row on the public form. */
-  .consent {
-    @apply flex cursor-pointer items-start gap-3 text-base text-ink;
-  }
-  .consent input {
-    @apply mt-0.5 size-6 flex-none cursor-pointer;
-    accent-color: var(--accent);
-  }
 }
 
 @media (prefers-reduced-motion: reduce) {

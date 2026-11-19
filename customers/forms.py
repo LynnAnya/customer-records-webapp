@@ -93,7 +93,7 @@ class CustomerForm(forms.ModelForm):
 
 
 class AdminCustomerForm(CustomerForm):
-    """Admin add and edit. No consent box; `consent_at` is never touched here."""
+    """Admin add and edit: the shared fields, no honeypot."""
 
     @property
     def customer_fields(self) -> list[forms.BoundField]:
@@ -123,15 +123,10 @@ class ImportCustomerForm(CustomerForm):
 
 
 class PublicRegistrationForm(CustomerForm):
-    """The QR form: adds consent and a honeypot that only bots fill in."""
+    """The QR form: adds a honeypot that only bots fill in."""
 
     HONEYPOT_FIELD = "website"
 
-    consent = forms.BooleanField(
-        # Draft wording. The final text is pending a Thai lawyer.
-        label="ข้าพเจ้ายินยอมให้บริษัทเก็บและใช้ข้อมูลข้างต้นเพื่อการติดต่อและการโอนเงิน",
-        error_messages={"required": "กรุณากดยินยอมก่อนส่งข้อมูล"},
-    )
     website = forms.CharField(
         required=False,
         label="เว็บไซต์",
@@ -140,7 +135,7 @@ class PublicRegistrationForm(CustomerForm):
 
     @property
     def customer_fields(self) -> list[forms.BoundField]:
-        """The fields a person fills in, without consent and the honeypot."""
+        """The fields a person fills in, without the honeypot."""
         return [self[name] for name in CUSTOMER_FIELDS]
 
     def is_bot(self) -> bool:

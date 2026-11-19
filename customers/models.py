@@ -34,7 +34,6 @@ class Customer(models.Model):
     referral = models.CharField(max_length=150, blank=True, default=DEFAULT_REFERRAL)
     is_hidden = models.BooleanField(default=False)
     created_by = models.CharField(max_length=10, choices=CreatedBy.choices)
-    consent_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

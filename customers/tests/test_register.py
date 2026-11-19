@@ -23,7 +23,6 @@ def valid_data(**overrides) -> dict[str, str]:
         "bank_name": "ธนาคารทดสอบ",
         "account_number": "0001234567",
         "referral": "",
-        "consent": "on",
         "website": "",
     }
     data.update(overrides)
@@ -44,7 +43,6 @@ def test_valid_form_saves_a_qr_customer_and_redirects(client) -> None:
     assert response.url == THANKS
     customer = Customer.objects.get()
     assert customer.created_by == Customer.CreatedBy.QR_CODE
-    assert customer.consent_at is not None
     assert customer.is_hidden is False
     assert customer.referral == "บริษัท"
 
@@ -77,7 +75,6 @@ def test_spaces_and_dashes_are_removed_from_numbers(client) -> None:
         ("license_plate", "--"),
         ("license_plate", ""),
         ("bank_name", ""),
-        ("consent", ""),
     ],
 )
 def test_invalid_input_is_rejected_with_an_error(client, field, value) -> None:
@@ -157,8 +154,7 @@ def test_other_http_methods_are_not_allowed(client) -> None:
 
 
 def test_error_messages_are_friendly_thai(client) -> None:
-    response = client.post(REGISTER, valid_data(name="", consent=""))
+    response = client.post(REGISTER, valid_data(name=""))
 
     errors = response.context["form"].errors
     assert errors["name"] == ["กรุณากรอกข้อมูลในช่องนี้"]
-    assert errors["consent"] == ["กรุณากดยินยอมก่อนส่งข้อมูล"]

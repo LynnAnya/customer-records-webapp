@@ -215,9 +215,7 @@ def test_edit_page_names_the_other_customers_with_the_same_phone(
 def test_public_form_never_reveals_a_duplicate(client, make_customer) -> None:
     make_customer(phone=PHONE)
 
-    response = client.post(
-        reverse("register"), form_data(consent="on", website=""), follow=True
-    )
+    response = client.post(reverse("register"), form_data(website=""), follow=True)
 
     assert Customer.objects.filter(phone=PHONE).count() == 2
     assert "ซ้ำ" not in response.text

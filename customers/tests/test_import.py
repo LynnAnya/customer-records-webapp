@@ -66,7 +66,6 @@ def test_real_run_saves_customers_as_excel(excel) -> None:
     assert somchai.account_number == "0001234567"
     assert somchai.referral == "บริษัท"
     assert somchai.is_hidden is False
-    assert somchai.consent_at is not None  # imported customers count as consented
     assert Customer.objects.get(name="มะลิ มีนา").referral == "คุณสมศรี"
 
 

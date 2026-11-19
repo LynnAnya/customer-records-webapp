@@ -75,7 +75,6 @@ def register(request: HttpRequest) -> HttpResponse:
     if not form.is_bot():
         customer = form.save(commit=False)
         customer.created_by = Customer.CreatedBy.QR_CODE
-        customer.consent_at = timezone.now()
         customer.save()
         record_attempt(ip_address)
 

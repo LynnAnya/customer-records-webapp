@@ -299,15 +299,70 @@ def test_last_active_admin_can_never_be_deactivated(admin, second_admin) -> None
     assert admin.is_active is True
 
 
-def test_another_admin_can_be_deactivated_when_one_remains(
-    client, admin, second_admin
+# --- Admins never act on each other ----------------------------------------
+
+
+def other_admin_urls(target) -> list[tuple[str, str, dict]]:
+    return [
+        ("get", reverse("staff_edit", args=[target.pk]), {}),
+        ("post", reverse("staff_edit", args=[target.pk]), {"username": "taken"}),
+        ("get", reset_url(target), {}),
+        ("post", reset_url(target), {"new_password1": NEW, "new_password2": NEW}),
+        ("post", active_url(target), {"active": "0"}),
+    ]
+
+
+@pytest.mark.parametrize("direction", ["first_to_second", "second_to_first"])
+def test_an_admin_gets_403_on_every_action_against_another_admin(
+    client, admin, second_admin, direction
+) -> None:
+    actor, target = (admin, second_admin)
+    if direction == "second_to_first":
+        actor, target = target, actor
+    before = (target.username, target.password, target.is_active)
+    client.force_login(actor)
+
+    for method, url, data in other_admin_urls(target):
+        response = getattr(client, method)(url, data)
+        assert response.status_code == 403, (method, url)
+
+    target.refresh_from_db()
+    assert (target.username, target.password, target.is_active) == before
+    assert logged().count() == 0
+
+
+def test_other_admin_rows_have_no_buttons_but_are_listed(
+    client, admin, second_admin, staff
 ) -> None:
     client.force_login(admin)
 
-    client.post(active_url(second_admin), {"active": "0"})
+    page = client.get(LIST).text
 
-    second_admin.refresh_from_db()
-    assert second_admin.is_active is False
+    assert "admin2" in page
+    for url in (
+        reverse("staff_edit", args=[second_admin.pk]),
+        reset_url(second_admin),
+        active_url(second_admin),
+    ):
+        assert url not in page
+    # Own row: edit only. Staff row: every action.
+    assert reverse("staff_edit", args=[admin.pk]) in page
+    assert active_url(admin) not in page
+    staff_edit = reverse("staff_edit", args=[staff.pk])
+    for url in (staff_edit, reset_url(staff), active_url(staff)):
+        assert url in page
+
+
+def test_admin_can_still_edit_their_own_name_and_username(
+    client, admin, second_admin
+) -> None:
+    client.force_login(admin)
+    data = {"username": "boss", "first_name": "ใหม่", "last_name": "ชื่อ"}
+
+    client.post(reverse("staff_edit", args=[admin.pk]), data)
+
+    admin.refresh_from_db()
+    assert (admin.username, admin.first_name) == ("boss", "ใหม่")
 
 
 # --- Change my own password -----------------------------------------------

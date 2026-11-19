@@ -2,20 +2,30 @@
 
 from django.contrib import messages
 from django.contrib.auth import get_user_model
+from django.core.exceptions import PermissionDenied
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_GET, require_http_methods, require_POST
 
 from accounts import services
 from accounts.forms import StaffCreateForm, StaffEditForm, ThaiSetPasswordForm
-from accounts.permissions import admin_required
+from accounts.permissions import (
+    admin_required,
+    can_edit_account,
+    can_manage_account,
+)
 from audit.services import get_client_ip
 
 
 @admin_required
 @require_GET
 def staff_list(request: HttpRequest) -> HttpResponse:
-    users = get_user_model().objects.order_by("-is_active", "-is_admin", "username")
+    users = list(
+        get_user_model().objects.order_by("-is_active", "-is_admin", "username")
+    )
+    for person in users:
+        person.can_edit = can_edit_account(request.user, person)
+        person.can_manage = can_manage_account(request.user, person)
     return render(request, "accounts/staff_list.html", {"users": users})
 
 
@@ -42,6 +52,8 @@ def staff_create(request: HttpRequest) -> HttpResponse:
 def staff_edit(request: HttpRequest, pk: int) -> HttpResponse:
     """Change an account's username, first name and last name."""
     target = get_object_or_404(get_user_model(), pk=pk)
+    if not can_edit_account(request.user, target):
+        raise PermissionDenied
     form = StaffEditForm(request.POST or None, instance=target)
     if request.method == "POST" and form.is_valid():
         if services.edit_staff(form, request.user, get_client_ip(request)):
@@ -66,6 +78,8 @@ def staff_reset_password(request: HttpRequest, pk: int) -> HttpResponse:
     if target.pk == request.user.pk:
         # Your own password needs your current password: use the normal page.
         return redirect("password_change")
+    if not can_manage_account(request.user, target):
+        raise PermissionDenied
 
     form = ThaiSetPasswordForm(target, request.POST or None)
     if request.method == "POST" and form.is_valid():
@@ -85,7 +99,9 @@ def staff_reset_password(request: HttpRequest, pk: int) -> HttpResponse:
 @admin_required
 @require_POST
 def staff_set_active(request: HttpRequest, pk: int) -> HttpResponse:
-    get_object_or_404(get_user_model(), pk=pk)
+    target = get_object_or_404(get_user_model(), pk=pk)
+    if not can_manage_account(request.user, target):
+        raise PermissionDenied
     active = request.POST.get("active") == "1"
     try:
         target = services.set_active(request.user, pk, active, get_client_ip(request))

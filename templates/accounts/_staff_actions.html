@@ -1,6 +1,8 @@
-{# Buttons for one account. Your own password is changed under ตั้งค่า, not here. #}
+{# Buttons for one account. Admins never act on another admin; your own password is changed on the account page. #}
+{% if person.can_edit %}
 <a class="btn btn-outline min-h-10 px-3 text-sm" href="{% url 'staff_edit' person.pk %}">แก้ไข</a>
-{% if person.pk != request.user.pk %}
+{% endif %}
+{% if person.can_manage %}
 <a class="btn btn-outline min-h-10 px-3 text-sm" href="{% url 'staff_reset_password' person.pk %}">ตั้งรหัสผ่านใหม่</a>
 <form method="post" action="{% url 'staff_set_active' person.pk %}" class="inline">
   {% csrf_token %}

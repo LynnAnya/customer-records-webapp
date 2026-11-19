@@ -22,3 +22,19 @@ def admin_required(view: Callable[..., HttpResponse]) -> Callable[..., HttpRespo
         return view(request, *args, **kwargs)
 
     return wrapper
+
+
+# --- Who may act on which account (staff pages) ----------------------------
+# Admins manage staff accounts only. They never edit, reset or (de)activate
+# another admin; admins are created and managed from the server shell. An
+# admin may still edit their own name and username.
+
+
+def can_edit_account(actor, target) -> bool:
+    """Change username, first name and last name."""
+    return not target.is_admin or target.pk == actor.pk
+
+
+def can_manage_account(actor, target) -> bool:
+    """Set a new password, deactivate or reactivate."""
+    return not target.is_admin

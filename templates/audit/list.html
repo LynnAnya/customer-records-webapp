@@ -4,6 +4,9 @@
 {% block title %}บันทึกกิจกรรม{% endblock %}
 
 {% block content %}
+{% comment %} Filter state for the whole page. Phones: the filters stay folded behind one bar with a centred
+   filter icon (open when a filter is set); wider screens always show them. {% endcomment %}
+<div x-data="{ names: ['user', 'action', 'from', 'to'], active: {{ filters.active_count }}, filtersOpen: {{ filters.active_count|yesno:'true,false' }} }">
 <div class="flex flex-wrap items-start justify-between gap-4">
   <div>
     <h1 class="text-3xl font-bold leading-snug">บันทึกกิจกรรม</h1>
@@ -20,11 +23,18 @@
   </form>
 </div>
 
+<div class="split-bar mt-3 max-sm:grid-cols-1 sm:hidden">
+  <button type="button" class="btn" @click="filtersOpen = !filtersOpen" :aria-expanded="filtersOpen ? 'true' : 'false'" aria-controls="log-filters" aria-label="ตัวกรอง" title="ตัวกรอง">
+    {% include "components/icon.html" with name="filter" class="size-5" %}
+    <span class="badge" x-show="active" x-text="active" {% if not filters.active_count %}x-cloak{% endif %}>{{ filters.active_count }}</span>
+  </button>
+</div>
+
 <form id="log-filters" method="get" action="{% url 'activity_log' %}"
       hx-get="{% url 'activity_log_table' %}" hx-target="#log-table" hx-trigger="change, submit"
-      x-data="{ names: ['user', 'action', 'from', 'to'], active: {{ filters.active_count }} }"
       @change="active = names.filter(n => $el.elements[n].value).length"
-      class="filter-panel lg:grid-cols-4">
+      class="filter-panel lg:grid-cols-4 {% if not filters.active_count %}max-sm:hidden{% endif %}"
+      :class="{ 'max-sm:hidden': !filtersOpen }">
   <div>
     <label for="user">ผู้ใช้</label>
     <select id="user" name="user" class="control">
@@ -150,5 +160,6 @@
   </div>
   {% endif %}
 {% endpartialdef %}
+</div>
 </div>
 {% endblock %}

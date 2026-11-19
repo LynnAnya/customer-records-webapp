@@ -255,3 +255,12 @@ def test_phone_card_is_one_link_to_the_detail_page(as_admin, admin) -> None:
     detail = reverse("activity_log_detail", args=[entry.pk])
     assert f'<a class="link-card" href="{detail}?back=' in page
     assert '<span class="sr-only">ดูรายละเอียด</span>' in page
+
+
+def test_phone_filters_fold_behind_one_bar_until_a_filter_is_set(as_admin) -> None:
+    folded = as_admin.get(PAGE).text
+    open_ = as_admin.get(PAGE, {"action": "login"}).text
+
+    assert 'aria-controls="log-filters" aria-label="ตัวกรอง"' in folded
+    assert "filter-panel lg:grid-cols-4 max-sm:hidden" in folded
+    assert "filter-panel lg:grid-cols-4 max-sm:hidden" not in open_

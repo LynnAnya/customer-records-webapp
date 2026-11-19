@@ -213,29 +213,28 @@
 </form>
 
 {# Shown while customers are ticked. Copy, PDF and hide buttons are added in later steps. #}
-{# Phones: a count tile, the text and "clear" on the left, icon-only buttons below. Desktop: text buttons. #}
+{# Phones: count and text on the left, "clear" top right (thumb reach), then icon buttons spread evenly across the bar. Desktop: text buttons. #}
 <div class="selection-bar" x-show="ids.length > 0" x-cloak role="status">
-  <div class="flex items-center gap-3">
+  <div class="flex items-center gap-3 max-md:w-full">
     <span class="selection-count md:hidden" x-text="ids.length" aria-hidden="true"></span>
-    <div>
+    <div class="min-w-0">
       <span class="font-semibold whitespace-nowrap">เลือกแล้ว <span x-text="ids.length" class="tabular-nums"></span> ราย</span>
-      <span x-show="notice" x-text="notice" x-cloak class="ml-2 rounded-md bg-on-accent/20 px-2 py-0.5 text-sm" role="status"></span>
-      <button type="button" class="block cursor-pointer text-sm font-semibold underline underline-offset-4 md:hidden" @click="clear()">ล้างการเลือก</button>
+      <span x-show="notice" x-text="notice" x-cloak class="rounded-md bg-on-accent/20 px-2 py-0.5 text-sm max-md:mt-0.5 max-md:block max-md:w-fit md:ml-2" role="status"></span>
     </div>
+    <button type="button" class="ml-auto min-h-11 cursor-pointer rounded-lg px-3 font-semibold underline underline-offset-4 hover:bg-on-accent/15 md:hidden" @click="clear()">ล้างการเลือก</button>
   </div>
-  <div class="flex flex-wrap items-center gap-2 sm:justify-end">
+  <div class="bar-buttons">
     {# Copy, Share and PDF: both roles. The server re-checks every ID and logs first. #}
     <button type="button" class="bar-btn" title="คัดลอก" @click="copy()" :disabled="busy">{% include "components/icon.html" with name="copy" class="size-4" %}<span class="bar-label">คัดลอก</span></button>
     <button type="button" class="bar-btn" title="แชร์" @click="openShare()" :disabled="busy" x-show="canShare" x-cloak>{% include "components/icon.html" with name="share" class="size-4" %}<span class="bar-label">แชร์</span></button>
-    <form method="post" action="{% url 'customer_pdf' %}" x-ref="exportForm" data-text-url="{% url 'customer_share_text' %}">
+    <form method="post" action="{% url 'customer_pdf' %}" x-ref="exportForm" data-text-url="{% url 'customer_share_text' %}" class="max-md:contents">
       {% csrf_token %}
       <input type="hidden" name="ids" :value="ids.join(',')">
       <button type="submit" class="bar-btn" title="PDF">{% include "components/icon.html" with name="file-down" class="size-4" %}<span class="bar-label">PDF</span></button>
     </form>
     {% if is_admin %}
-    <span class="h-6 w-px bg-on-accent/30 md:hidden" aria-hidden="true"></span>
     {# Hide or unhide every ticked customer. The server re-checks each ID. #}
-    <form method="post" action="{% url 'customer_set_hidden' %}" class="flex gap-2" @submit="$refs.next.value = location.pathname + location.search">
+    <form method="post" action="{% url 'customer_set_hidden' %}" class="flex gap-2 max-md:contents" @submit="$refs.next.value = location.pathname + location.search">
       {% csrf_token %}
       <input type="hidden" name="ids" :value="ids.join(',')">
       <input type="hidden" name="next" x-ref="next">
@@ -243,7 +242,7 @@
       <button type="submit" name="hidden" value="0" class="bar-btn" title="แสดง">{% include "components/icon.html" with name="eye" class="size-4" %}<span class="bar-label">แสดง</span></button>
     </form>
     {# Delete every ticked customer: opens a page where the admin types to confirm. #}
-    <form method="post" action="{% url 'customer_bulk_delete' %}" @submit="$refs.deleteNext.value = location.pathname + location.search">
+    <form method="post" action="{% url 'customer_bulk_delete' %}" class="max-md:contents" @submit="$refs.deleteNext.value = location.pathname + location.search">
       {% csrf_token %}
       <input type="hidden" name="ids" :value="ids.join(',')">
       <input type="hidden" name="next" x-ref="deleteNext">

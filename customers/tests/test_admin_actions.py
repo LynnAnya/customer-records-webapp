@@ -1,11 +1,8 @@
 """Admin actions: add, edit, delete, hide/unhide. All data is fake."""
 
-from datetime import timedelta
-
 import pytest
 from django.contrib.messages import get_messages
 from django.urls import reverse
-from django.utils import timezone
 
 from audit.models import ActivityLog
 from customers.models import Customer
@@ -25,7 +22,6 @@ def form_data(**overrides) -> dict[str, str]:
         "bank_name": "กสิกรไทย",
         "account_number": ACCOUNT,
         "referral": "",
-        "consent": "on",
     }
     data.update(overrides)
     return data
@@ -121,7 +117,6 @@ def test_admin_adds_a_customer(client, admin) -> None:
     assert created.created_by == Customer.CreatedBy.ADMIN
     assert created.phone == PHONE
     assert created.referral == "บริษัท"
-    assert created.consent_at is not None
 
 
 def test_add_uses_the_same_validation_as_the_public_form(client, admin) -> None:
@@ -135,50 +130,12 @@ def test_add_uses_the_same_validation_as_the_public_form(client, admin) -> None:
     assert logged().count() == 0
 
 
-def test_add_form_asks_for_consent_but_has_no_honeypot(client, admin) -> None:
+def test_add_form_has_no_honeypot(client, admin) -> None:
     client.force_login(admin)
 
     fields = client.get(CREATE).context["form"].fields
 
-    assert "consent" in fields
     assert "website" not in fields
-
-
-def test_add_without_consent_is_refused(client, admin) -> None:
-    client.force_login(admin)
-
-    response = client.post(CREATE, form_data(consent=""))
-
-    assert response.status_code == 200
-    assert "consent" in response.context["form"].errors
-    assert Customer.objects.count() == 0
-
-
-def test_edit_asks_for_consent_only_when_none_is_recorded(
-    client, admin, make_customer
-) -> None:
-    client.force_login(admin)
-    without = make_customer(consent_at=None)
-    with_consent = make_customer(consent_at=timezone.now())
-
-    def form_fields(customer):
-        url = reverse("customer_edit", args=[customer.pk])
-        return client.get(url).context["form"].fields
-
-    assert "consent" in form_fields(without)
-    assert "consent" not in form_fields(with_consent)
-
-
-def test_edit_keeps_the_original_consent_time(client, admin, make_customer) -> None:
-    client.force_login(admin)
-    first = timezone.now() - timedelta(days=30)
-    customer = make_customer(consent_at=first)
-
-    client.post(reverse("customer_edit", args=[customer.pk]), form_data(consent=""))
-
-    customer.refresh_from_db()
-    assert customer.consent_at == first
-    assert customer.name == "สมชาย ใจดี"
 
 
 def test_phone_is_free_text_but_a_plain_number_is_cleaned(client, admin) -> None:

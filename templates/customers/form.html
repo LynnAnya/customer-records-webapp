@@ -28,16 +28,6 @@
       {% endfor %}
     </div>
 
-    {% if form.consent %}
-    <div class="mb-6 rounded-xl bg-sunken p-4">
-      <label class="consent" for="{{ form.consent.id_for_label }}">
-        {{ form.consent }}
-        <span>{{ form.consent.label }}</span>
-      </label>
-      {% for error in form.consent.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
-    </div>
-    {% endif %}
-
     <div class="mt-2 flex flex-col-reverse gap-3 sm:flex-row sm:items-center">
       <a href="{{ back_url }}" class="btn btn-outline">ยกเลิก</a>
       <button type="submit" class="btn btn-primary sm:ml-auto sm:min-w-40">{% if customer %}บันทึกการแก้ไข{% else %}เพิ่มลูกค้า{% endif %}</button>

@@ -2,7 +2,6 @@ import re
 
 from django import forms
 from django.core.validators import RegexValidator
-from django.utils import timezone
 
 from customers.models import MISSING, Customer
 
@@ -94,31 +93,11 @@ class CustomerForm(forms.ModelForm):
 
 
 class AdminCustomerForm(CustomerForm):
-    """Admin add and edit. Adds the consent box when consent is not recorded yet
-    (always on add; on edit only for a customer without `consent_at`)."""
-
-    consent = forms.BooleanField(
-        # Draft wording, in the admin's voice. Final text pending a Thai lawyer.
-        label="ลูกค้ายินยอมให้บริษัทเก็บและใช้ข้อมูลข้างต้นเพื่อการติดต่อและการโอนเงิน",
-        error_messages={"required": "กรุณายืนยันว่าลูกค้ายินยอมก่อนบันทึก"},
-    )
-
-    def __init__(self, *args, **kwargs) -> None:
-        super().__init__(*args, **kwargs)
-        if self.instance.pk and self.instance.consent_at:
-            del self.fields["consent"]
+    """Admin add and edit. No consent box; `consent_at` is never touched here."""
 
     @property
     def customer_fields(self) -> list[forms.BoundField]:
         return [self[name] for name in CUSTOMER_FIELDS]
-
-    def save(self, commit: bool = True) -> Customer:
-        customer = super().save(commit=False)
-        if self.cleaned_data.get("consent") and not customer.consent_at:
-            customer.consent_at = timezone.now()
-        if commit:
-            customer.save()
-        return customer
 
 
 class ImportCustomerForm(CustomerForm):

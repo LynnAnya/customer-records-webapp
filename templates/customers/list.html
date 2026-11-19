@@ -13,7 +13,8 @@
     {{ customer.name }}
     {% if customer.is_hidden %}<span class="badge badge-muted ml-2 align-middle">{% include "components/icon.html" with name="eye-off" class="mr-1 size-3.5" %}ซ่อน</span>{% endif %}
   </td>
-  <td>{{ customer.license_plate }}</td>
+  {# Long plates (with a province) wrap onto two lines, so one long plate does not widen the whole column. #}
+  <td><span class="cell-wrap">{{ customer.license_plate }}</span></td>
   {% if show_phone %}<td class="tabular-nums whitespace-nowrap">{{ customer.phone }}{% if customer.has_duplicate_phone %}<br><span class="badge badge-signal" title="มีลูกค้ารายอื่นใช้เบอร์เดียวกัน">เบอร์ซ้ำ</span>{% endif %}</td>{% endif %}
   {# Bank with the masked account number under it, smaller and muted. #}
   <td>

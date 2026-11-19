@@ -313,6 +313,10 @@
     width: 0.01%;
     min-width: 3rem;
   }
+  /* Text that may wrap at a set width even while the row stays on one line. */
+  .data-table .cell-wrap {
+    @apply inline-block max-w-32 whitespace-normal;
+  }
   .data-table th.actions-cell {
     @apply bg-sunken;
   }

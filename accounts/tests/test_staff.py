@@ -593,3 +593,18 @@ def test_phone_cards_use_icon_buttons_with_thai_labels(
     assert f'aria-label="แก้ไข {second_admin.username}"' not in page
     # Add button: floating on phones, the same one as on the customers page.
     assert 'aria-label="เพิ่มพนักงาน"' in page
+
+
+def test_form_help_is_escaped_except_djangos_password_list(client, admin) -> None:
+    from accounts.forms import StaffCreateForm
+
+    client.force_login(admin)
+    original = StaffCreateForm.base_fields["first_name"].help_text
+    StaffCreateForm.base_fields["first_name"].help_text = "<b>tag</b>"
+    try:
+        page = client.get(CREATE).text
+    finally:
+        StaffCreateForm.base_fields["first_name"].help_text = original
+
+    assert "&lt;b&gt;tag&lt;/b&gt;" in page  # ordinary help text: shown as text
+    assert "<ul><li>" in page  # Django's own password rules list: still a list

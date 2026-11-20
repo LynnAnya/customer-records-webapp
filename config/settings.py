@@ -14,6 +14,7 @@ from datetime import timedelta
 from pathlib import Path
 
 import environ
+from django.utils.csp import CSP
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -69,6 +70,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "django.middleware.csp.ContentSecurityPolicyMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -224,6 +226,31 @@ if DEBUG:
     }
 
 
+# Content-Security-Policy: the browser only runs scripts and loads files from
+# this site. No inline <script>, no inline style attributes, nothing from other
+# sites, no framing. 'unsafe-eval' is needed because Alpine and HTMX evaluate
+# the expressions in attributes such as @click="copy()"; customer text never
+# appears in those attributes (tested in customers/tests/test_list.py).
+# Live it is enforced; on a laptop it only reports in the browser console, so
+# Django's debug error page (which uses inline styles) still works.
+CONTENT_SECURITY_POLICY = {
+    "default-src": [CSP.SELF],
+    "script-src": [CSP.SELF, CSP.UNSAFE_EVAL],
+    "style-src": [CSP.SELF],
+    "img-src": [CSP.SELF],
+    "font-src": [CSP.SELF],
+    "connect-src": [CSP.SELF],
+    "object-src": [CSP.NONE],
+    "base-uri": [CSP.SELF],
+    "form-action": [CSP.SELF],
+    "frame-ancestors": [CSP.NONE],
+}
+if DEBUG:
+    SECURE_CSP_REPORT_ONLY = CONTENT_SECURITY_POLICY
+else:
+    SECURE_CSP = CONTENT_SECURITY_POLICY
+
+
 # Logs go to the console (Render shows them under Logs). Django's request logs
 # hold the path and the error only, never form contents. Never add a log line
 # with a phone number, account number or request body (CLAUDE.md rule 6).
@@ -233,14 +260,26 @@ LOGGING = {
     "formatters": {
         "plain": {"format": "{levelname} {name}: {message}", "style": "{"},
     },
+    "filters": {"one_line": {"()": "config.log_filters.OneLine"}},
     "handlers": {
         "console": {"class": "logging.StreamHandler", "formatter": "plain"},
+        "console_one_line": {
+            "class": "logging.StreamHandler",
+            "formatter": "plain",
+            "filters": ["one_line"],
+        },
     },
     "root": {"handlers": ["console"], "level": "WARNING"},
     "loggers": {
         "django": {
             "handlers": ["console"],
             "level": env("DJANGO_LOG_LEVEL", default="INFO"),
+            "propagate": False,
+        },
+        # Unknown Host header (robots): one line each, no traceback.
+        "django.security.DisallowedHost": {
+            "handlers": ["console_one_line"],
+            "level": "ERROR",
             "propagate": False,
         },
     },

@@ -1,0 +1,12 @@
+{% extends "public_base.html" %}
+{# Rendered without request data on purpose (Django's 500 handler): no user, no database. #}
+
+{% block title %}ระบบขัดข้อง{% endblock %}
+{% block heading %}ระบบขัดข้องชั่วคราว{% endblock %}
+{% block lead %}ขออภัย เกิดข้อผิดพลาดที่ระบบ กรุณาลองใหม่อีกครั้งในอีกสักครู่{% endblock %}
+
+{% block content %}
+<div class="card p-6">
+  <a href="/" class="btn btn-primary btn-block">ลองใหม่</a>
+</div>
+{% endblock %}

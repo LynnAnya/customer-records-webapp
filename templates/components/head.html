@@ -2,6 +2,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow">
+{# HTMX would add its own <style> tag for loading indicators (unused here); the Content-Security-Policy blocks inline styles. #}
+<meta name="htmx-config" content='{"includeIndicatorStyles": false}'>
+<link rel="icon" href="{% static 'img/favicon.svg' %}" type="image/svg+xml">
 {# `asset` adds a version to the address, so a changed file is never served from an old browser cache. #}
 {# Not deferred on purpose: sets the theme and sidebar state before the page is painted. #}
 <script src="{% asset 'js/app.js' %}"></script>

@@ -110,6 +110,7 @@ def _read_rows(path: Path) -> tuple[list[str], list[tuple[int, dict[str, object]
     except Exception as error:  # openpyxl raises several unrelated types
         raise ImportFileError("The file could not be opened as Excel.") from error
 
+    rows = None
     try:
         rows = workbook.worksheets[0].iter_rows(values_only=True)
         header_row = next(rows, None)
@@ -134,6 +135,10 @@ def _read_rows(path: Path) -> tuple[list[str], list[tuple[int, dict[str, object]
                 data.append((row_number, values))
         return sorted(found), data
     finally:
+        # A half-read sheet (stopped by an error) holds part of the file open,
+        # and closing the workbook alone does not release it. Close it first.
+        if rows is not None:
+            rows.close()
         workbook.close()
 
 

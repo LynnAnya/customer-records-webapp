@@ -1,5 +1,6 @@
 """Excel import command. Every file here is fake and built inside the test."""
 
+import os
 from io import StringIO
 from pathlib import Path
 
@@ -9,7 +10,7 @@ from django.core.management.base import CommandError
 from openpyxl import Workbook
 
 from audit.models import ActivityLog
-from customers.importing import import_customers
+from customers.importing import ImportFileError, import_customers
 from customers.models import Customer
 
 pytestmark = pytest.mark.django_db
@@ -225,6 +226,22 @@ def test_missing_columns_stop_the_import_and_list_what_was_found(excel) -> None:
     assert "หมายเลขบัญชี" in message
     assert "Headers found: ชื่อ, เบอร์โทร" in message
     assert Customer.objects.count() == 0
+
+
+def open_files() -> int:
+    return len(os.listdir("/dev/fd"))  # this process's open files (macOS and Linux)
+
+
+def test_a_stopped_import_closes_the_excel_file(excel) -> None:
+    path = excel([["สมชาย", "0811112222"]], ["ชื่อ", "เบอร์โทร"])
+    before = open_files()
+
+    # pytest.raises keeps the error, as any caller may: the file must be closed anyway.
+    with pytest.raises(ImportFileError) as error:
+        import_customers(path, dry_run=True)
+
+    assert "Missing columns" in str(error.value)
+    assert open_files() == before
 
 
 @pytest.mark.parametrize("name", ["missing.xlsx", "customers.csv"])

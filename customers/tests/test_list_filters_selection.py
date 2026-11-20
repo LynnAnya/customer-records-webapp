@@ -362,5 +362,5 @@ def test_address_bar_url_never_contains_selected_ids(
 
     response = client.get(TABLE, {"selected": str(a.pk), "source": "admin"})
 
-    assert "selected" not in response["HX-Push-Url"]
-    assert "source=admin" in response["HX-Push-Url"]
+    assert "selected" not in response["HX-Replace-Url"]
+    assert "source=admin" in response["HX-Replace-Url"]

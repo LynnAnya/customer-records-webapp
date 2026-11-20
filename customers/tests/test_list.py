@@ -233,8 +233,8 @@ def test_fragment_is_only_the_table_and_keeps_the_page_url(
 
     assert "<html" not in response.text
     assert "สมชาย" in response.text
-    assert response["HX-Push-Url"].startswith(f"{LIST}?q=")
-    assert "sort=name_az" in response["HX-Push-Url"]
+    assert response["HX-Replace-Url"].startswith(f"{LIST}?q=")
+    assert "sort=name_az" in response["HX-Replace-Url"]
 
 
 def test_full_page_greets_and_keeps_the_search_text(
@@ -337,3 +337,12 @@ def test_customer_text_never_becomes_code(
     # Alpine code on the page never contains customer text, only ids and counts.
     for value in alpine_attribute_values(page):
         assert "alert" not in value
+
+
+def test_table_refreshes_never_add_back_button_entries(client, staff) -> None:
+    client.force_login(staff)
+
+    response = client.get(TABLE, {"q": "x"})
+
+    assert "HX-Push-Url" not in response
+    assert response["HX-Replace-Url"].startswith(f"{LIST}?q=x")

@@ -149,7 +149,9 @@ def customer_table(request: HttpRequest) -> HttpResponse:
     context = _table_context(request)
     response = render(request, "customers/list.html#table", context)
     # Keep the address bar on the full page, so reload and bookmarks work.
-    response["HX-Push-Url"] = context["list_url"]
+    # Replace, never push: the 10-second refresh would otherwise add a Back
+    # button entry every time.
+    response["HX-Replace-Url"] = context["list_url"]
     return response
 
 

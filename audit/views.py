@@ -57,7 +57,8 @@ def activity_log_table(request: HttpRequest) -> HttpResponse:
     """Only the table, for filters, paging and the 10-second refresh."""
     context = _log_context(request)
     response = render(request, "audit/list.html#table", context)
-    response["HX-Push-Url"] = context["page_url"]
+    # Replace, never push: the 10-second refresh must not add Back entries.
+    response["HX-Replace-Url"] = context["page_url"]
     return response
 
 

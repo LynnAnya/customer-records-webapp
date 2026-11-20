@@ -234,7 +234,7 @@ def test_fragment_refreshes_itself_and_keeps_filters(as_admin, admin) -> None:
     assert 'hx-trigger="every 10s' in response.text
     assert "action=copy" in response.text.split('hx-get="')[1].split('"')[0]
     assert "อัปเดตล่าสุด" in response.text
-    assert response["HX-Push-Url"] == f"{PAGE}?action=copy"
+    assert response["HX-Replace-Url"] == f"{PAGE}?action=copy"
 
 
 def test_viewing_the_log_does_not_write_to_the_log(as_admin) -> None:

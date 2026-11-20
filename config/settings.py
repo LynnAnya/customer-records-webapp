@@ -33,6 +33,24 @@ SECRET_KEY = env("SECRET_KEY")
 DEBUG = env("DEBUG")
 
 ALLOWED_HOSTS = env.list("ALLOWED_HOSTS", default=[])
+# The site's own https address(es), e.g. https://example.onrender.com. Needed
+# for forms (CSRF) behind Render's HTTPS. Empty on a laptop.
+CSRF_TRUSTED_ORIGINS = env.list("CSRF_TRUSTED_ORIGINS", default=[])
+
+# Live (DEBUG=False) only: HTTPS everywhere. A laptop keeps plain http.
+if not DEBUG:
+    # Render opens HTTPS before Django and says so in X-Forwarded-Proto.
+    # Without this Django thinks every request is http and redirects forever.
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+    SECURE_SSL_REDIRECT = env.bool("SECURE_SSL_REDIRECT", default=True)
+    SECURE_REDIRECT_EXEMPT = [r"^healthz/$"]  # Render's health check
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    # Starts at 1 hour; raise to 31536000 (1 year) once the custom domain
+    # works on https, never before (a long value cannot be taken back).
+    SECURE_HSTS_SECONDS = env.int("SECURE_HSTS_SECONDS", default=3600)
+    # Subdomains and the preload list are decided with the client's domain.
+    SILENCED_SYSTEM_CHECKS = ["security.W005", "security.W021"]
 
 
 # Application definition
@@ -63,6 +81,11 @@ MIDDLEWARE = [
     "axes.middleware.AxesMiddleware",
 ]
 
+if not DEBUG:
+    # Live: WhiteNoise serves CSS, JS and fonts from STATIC_ROOT. It must come
+    # right after SecurityMiddleware. On a laptop Django serves them itself.
+    MIDDLEWARE.insert(1, "whitenoise.middleware.WhiteNoiseMiddleware")
+
 ROOT_URLCONF = "config.urls"
 
 TEMPLATES = [
@@ -90,6 +113,15 @@ WSGI_APPLICATION = "config.wsgi.application"
 DATABASES = {
     "default": env.db("DATABASE_URL"),
 }
+# Neon (live) sleeps after 5 idle minutes and closes connections. Check a kept
+# connection before using it, keep it at most 60 s (under Neon's 300 s), and
+# avoid server-side cursors, which Neon's pooled "-pooler" address cannot hold.
+# sslmode=require comes in the DATABASE_URL Neon gives you, not from here.
+DATABASES["default"].update(
+    CONN_MAX_AGE=env.int("CONN_MAX_AGE", default=60),
+    CONN_HEALTH_CHECKS=True,
+    DISABLE_SERVER_SIDE_CURSORS=True,
+)
 
 # Custom user model. Must be set before the first migration.
 AUTH_USER_MODEL = "accounts.User"
@@ -162,13 +194,54 @@ USE_TZ = True
 
 STATIC_URL = "static/"
 STATICFILES_DIRS = [BASE_DIR / "static"]
+# `collectstatic` copies everything here on Render (never committed).
+STATIC_ROOT = BASE_DIR / "staticfiles"
+STORAGES = {
+    "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+    # Live: compressed files with a fingerprint in the name (safe to cache
+    # forever). Laptop and tests: plain files, no collectstatic needed.
+    "staticfiles": {
+        "BACKEND": (
+            "django.contrib.staticfiles.storage.StaticFilesStorage"
+            if DEBUG
+            else "whitenoise.storage.CompressedManifestStaticFilesStorage"
+        )
+    },
+}
 
 
 # Email
 # https://docs.djangoproject.com/en/6.1/topics/email/#topic-email-configuration
 
-MAILERS = {
-    "default": {
-        "BACKEND": "django.core.mail.backends.console.EmailBackend",
+# The app sends no email. On a laptop anything that tries is printed to the
+# terminal; live, Django's default (SMTP, not configured) stays, because the
+# deploy check refuses development-only backends.
+if DEBUG:
+    MAILERS = {
+        "default": {
+            "BACKEND": "django.core.mail.backends.console.EmailBackend",
+        },
+    }
+
+
+# Logs go to the console (Render shows them under Logs). Django's request logs
+# hold the path and the error only, never form contents. Never add a log line
+# with a phone number, account number or request body (CLAUDE.md rule 6).
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "plain": {"format": "{levelname} {name}: {message}", "style": "{"},
+    },
+    "handlers": {
+        "console": {"class": "logging.StreamHandler", "formatter": "plain"},
+    },
+    "root": {"handlers": ["console"], "level": "WARNING"},
+    "loggers": {
+        "django": {
+            "handlers": ["console"],
+            "level": env("DJANGO_LOG_LEVEL", default="INFO"),
+            "propagate": False,
+        },
     },
 }

@@ -229,3 +229,6 @@ CLAUDE.md
 *.xlsx
 *.xls
 *.csv
+
+# Django collectstatic output (built on Render)
+staticfiles/

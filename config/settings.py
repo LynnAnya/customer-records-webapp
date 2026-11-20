@@ -38,6 +38,14 @@ ALLOWED_HOSTS = env.list("ALLOWED_HOSTS", default=[])
 # for forms (CSRF) behind Render's HTTPS. Empty on a laptop.
 CSRF_TRUSTED_ORIGINS = env.list("CSRF_TRUSTED_ORIGINS", default=[])
 
+# On Render: Render sets RENDER_EXTERNAL_HOSTNAME (e.g. example.onrender.com)
+# at build time and run time, so the site's own address is allowed without
+# typing it. A custom domain still goes into ALLOWED_HOSTS/CSRF_TRUSTED_ORIGINS.
+RENDER_EXTERNAL_HOSTNAME = env("RENDER_EXTERNAL_HOSTNAME", default="")
+if RENDER_EXTERNAL_HOSTNAME:
+    ALLOWED_HOSTS.append(RENDER_EXTERNAL_HOSTNAME)
+    CSRF_TRUSTED_ORIGINS.append(f"https://{RENDER_EXTERNAL_HOSTNAME}")
+
 # Live (DEBUG=False) only: HTTPS everywhere. A laptop keeps plain http.
 if not DEBUG:
     # Render opens HTTPS before Django and says so in X-Forwarded-Proto.

@@ -301,3 +301,39 @@ def test_desktop_table_shows_the_account_under_the_bank(
     assert "ธนาคาร / บัญชี" in page
     assert '<span class="block">กรุงไทย</span>' in page
     assert '<span class="sr-only">เลขที่บัญชี </span>•••• 3210' in page
+
+
+# --- Injection: customer text is only ever plain text ---------------------
+
+ATTACKS = [
+    "'); alert('x'); ('",
+    "<img src=x onerror=alert(1)>",
+    '" x-init="alert(1)" @click="alert(2)',
+    "<script>alert(3)</script>",
+]
+
+
+def alpine_attribute_values(page: str) -> list[str]:
+    """Values of attributes Alpine runs as code: x-*, @event, :binding."""
+    import re
+
+    pattern = r'\s(?:x-[\w:.-]+|@[\w:.-]+|:[\w-]+)\s*=\s*"([^"]*)"'
+    return re.findall(pattern, page)
+
+
+@pytest.mark.parametrize("attack", ATTACKS)
+@pytest.mark.parametrize("role", ["admin", "staff"])
+def test_customer_text_never_becomes_code(
+    client, request, make_customer, role, attack
+) -> None:
+    customer = make_customer(name=attack, license_plate=attack[:40], referral=attack)
+    client.force_login(request.getfixturevalue(role))
+
+    page = client.get(LIST, {"selected": str(customer.pk)}).text
+
+    # Escaped as text: no new tags, no broken-out attributes.
+    assert "<img src=x" not in page and "<script>alert" not in page
+    assert 'x-init="alert(1)"' not in page
+    # Alpine code on the page never contains customer text, only ids and counts.
+    for value in alpine_attribute_values(page):
+        assert "alert" not in value

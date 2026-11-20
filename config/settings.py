@@ -122,6 +122,10 @@ AXES_CLIENT_IP_CALLABLE = "audit.services.get_client_ip"
 # Our own activity log records logins; do not keep a second copy.
 AXES_DISABLE_ACCESS_LOG = True
 
+# Live on Render: read the visitor's real address from Cloudflare's
+# CF-Connecting-IP header (see audit.services.get_client_ip). Off on a laptop.
+TRUST_CF_CONNECTING_IP = env.bool("TRUST_CF_CONNECTING_IP", default=False)
+
 # Public registration form: saved forms allowed per IP address per hour.
 # Generous on purpose: customers on the same Wi-Fi share one IP address.
 REGISTRATION_RATE_LIMIT_PER_HOUR = env.int(

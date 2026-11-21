@@ -3,7 +3,7 @@
 <html lang="th" data-theme="{{ request.user.theme }}" data-theme-url="{% url 'set_theme' %}"{% if request.user.theme == "dark" %} class="dark"{% endif %}>
 <head>
   {% include "components/head.html" %}
-  <title>{% block title %}ระบบข้อมูลลูกค้า{% endblock %} · Customer Records</title>
+  <title>{% block title %}ระบบข้อมูลลูกค้า{% endblock %} · {{ SITE_NAME }}</title>
 </head>
 {% with page=request.resolver_match.url_name %}
 <body class="min-h-dvh" x-data="appShell()" @keydown.escape.window="drawer = false" {% if page == "account" or page == "password_change" %}x-init="settingsOpen = true"{% endif %}>
@@ -24,7 +24,7 @@
         <span class="max-lg:hidden">{% include "components/icon.html" with name="menu" class="size-6" %}</span>
       </button>
       <a href="{% url 'customer_list' %}" class="min-w-0 rounded-lg leading-tight lg:collapsed:hidden">
-        <span class="block truncate text-lg font-bold text-white">Customer Records</span>
+        <span class="block text-lg font-bold break-words text-white">{{ SITE_NAME }}</span>
         <span class="block truncate text-sm text-rail-ink">ระบบข้อมูลลูกค้า</span>
       </a>
     </div>
@@ -86,7 +86,7 @@
     <button type="button" @click="toggleMenu()" class="btn btn-quiet w-12 px-0" aria-controls="sidebar" :aria-expanded="drawer" aria-label="เปิดเมนู">
       {% include "components/icon.html" with name="menu" class="size-6" %}
     </button>
-    <span class="text-lg font-bold">Customer Records</span>
+    <span class="min-w-0 truncate text-lg font-bold">{{ SITE_NAME }}</span>
   </header>
 
   {# One-time messages (toasts). Success fades after 5 seconds; warnings stay until closed. #}

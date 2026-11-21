@@ -2,7 +2,7 @@
 <html lang="th">
 <head>
   {% include "components/head.html" %}
-  <title>{% block title %}ระบบข้อมูลลูกค้า{% endblock %} · Customer Records</title>
+  <title>{% block title %}ระบบข้อมูลลูกค้า{% endblock %}{% if SITE_NAME %} · {{ SITE_NAME }}{% endif %}</title>
 </head>
 <body class="min-h-dvh">
   {# Navy band on top, the card sits over its lower edge. #}

@@ -109,6 +109,7 @@ TEMPLATES = [
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
                 "accounts.context_processors.navigation",
+                "config.context_processors.site",
             ],
         },
     },
@@ -173,6 +174,11 @@ TRUST_CF_CONNECTING_IP = env.bool("TRUST_CF_CONNECTING_IP", default=False)
 REGISTRATION_RATE_LIMIT_PER_HOUR = env.int(
     "REGISTRATION_RATE_LIMIT_PER_HOUR", default=20
 )
+
+# The name shown in the app (tab titles, sidebar, login, QR form). The real
+# company name is set only in the environment (.env, Render), never in git.
+# Missing or empty falls back to a generic name.
+SITE_NAME = env("SITE_NAME", default="") or "Customer Records"
 
 
 # Password validation

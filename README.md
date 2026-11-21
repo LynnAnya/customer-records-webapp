@@ -93,7 +93,7 @@ uv run ruff check .
 
 ## Deployment
 
-The app is set up for Render (web service) and Neon (PostgreSQL). `build.sh` installs the locked packages, collects static files, runs Django's production checks and applies migrations. Every setting is documented in [`.env.example`](.env.example).
+The app is set up for Render (web service) and Neon (PostgreSQL). `build.sh` installs the locked packages, collects static files, runs Django's production checks and applies migrations. Every setting is documented in [`.env.example`](.env.example). The name shown in the app comes from the `SITE_NAME` setting, so the client's name is never stored in the code.
 
 ## License
 

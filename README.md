@@ -1,6 +1,6 @@
-# Customer Records: Customer Records Web App
+# Customer Records Web App
 
-A secure internal web app for a Thai small business to collect, search and share customer records, including bank account details that staff use to make transfers. Customers register themselves through a QR-code form; admins and staff work with the data behind a login, with role-based access, a full activity log and a mobile-first Thai interface.
+A secure internal web app for a small family business to collect, search and share customer records, including bank account details that staff use to make transfers. Customers register themselves through a QR-code form; admins and staff work with the data behind a login, with role-based access, a full activity log and a mobile-first Thai interface.
 
 Built as real client work with Django, PostgreSQL, HTMX and Alpine.js.
 

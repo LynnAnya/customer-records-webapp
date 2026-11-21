@@ -4,6 +4,18 @@ A secure internal web app for a small family business to collect, search and sha
 
 Built as real client work with Django, PostgreSQL, HTMX and Alpine.js.
 
+## Why this app
+
+The business used to keep customer details, including bank account numbers, in an Excel file, and collected them on paper, by phone or in chat. This app replaces both with one secure system.
+
+**Each role sees only what it needs.** Anyone who opens a spreadsheet sees everything in it. Here, admins manage the full records, while staff see only what they need to make transfers: they never see customers' phone numbers, or customers an admin has hidden. The server enforces these rules on every page, search and export, not just in the menus.
+
+**Every important action is recorded.** Excel can't tell you who changed, deleted or copied a customer's bank details. The app keeps an activity log of logins, edits, deletions, copies, shares and PDF exports, so the owner always knows who did what, and when.
+
+**Customers register without staff.** Customers scan a QR code and fill in the form on their own phone, at any time. No staff member has to take down details, retype them or chase missing ones.
+
+The same design makes the data more accurate and more private. Customers type their own account numbers, so staff never mishear or miscopy them, which matters because one wrong digit sends money to the wrong account. Every entry is checked, arrives in the same format and lands in one dated list, so nothing gets lost on paper or buried in chat, and bank details never sit on a desk or in someone's personal messages. Everyone works from one live copy instead of scattered file versions, the data is kept on a protected server instead of one laptop, and staff can search, copy and share to LINE from their phones in seconds.
+
 ## Interface
 
 <table>

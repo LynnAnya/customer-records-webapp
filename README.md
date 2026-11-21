@@ -1,20 +1,41 @@
 # Customer Records Web App
 
-A secure internal web app for a small family business to collect, search and share customer records, including bank account details that staff use to make transfers. Customers register themselves through a QR-code form; admins and staff work with the data behind a login, with role-based access, a full activity log and a mobile-first Thai interface.
+A secure customer database built for a small family business that pays its customers by bank transfer. It replaces an Excel file and details collected on paper or in chat with one system: customers register themselves by QR code, staff find and send correct bank details in seconds, and the owner controls who sees what and knows who did what.
 
 Built as real client work with Django, PostgreSQL, HTMX and Alpine.js.
 
+## The problem
+
+The business keeps a record of each customer, including the bank account they are paid into. Before this app:
+
+- **The records lived in one Excel file.** Anyone who opened it saw everything, copies drifted apart, and nothing showed who changed or copied what.
+- **Details arrived on paper, by phone or in chat** and were retyped by staff. Every retyped account number is a chance to pay the wrong person.
+- **Staff work on their phones and talk in LINE,** where a spreadsheet is slow and awkward.
+
+The users are 1–2 admins, 2–3 staff and a few hundred customers, all Thai-speaking.
+
+## Client requirements and how the app meets them
+
+| Requirement | Solution |
+|---|---|
+| Customers give their own details, correctly | A public QR-code form on the customer's own phone, checked on the server and protected against spam |
+| Staff pay customers without typing errors | One tap copies the name, bank and full account number, shares them to LINE, or creates a PDF |
+| Staff see only what they need | Role-based access: staff never see customers' phone numbers, so customer contact stays with the business |
+| The owner knows who did what | An append-only activity log of logins, changes, copies, shares and exports |
+| Admins stay in control | Add, edit, hide and delete customers; create, reset and deactivate staff accounts |
+| Keep the existing Excel data | An import command with a dry run that saves all rows or none |
+| Works on phones, in Thai | Mobile-first layout, Thai interface, Thai alphabetical sorting and a Thai font in PDFs |
+| Small team, small budget | One simple Django app and one database on low-cost hosting, easy to maintain |
+
 ## Why this app
 
-The business used to keep customer details, including bank account numbers, in an Excel file, and collected them on paper, by phone or in chat. This app replaces both with one secure system.
+**Each role sees only what it needs.** Admins see full records. Staff see what they need to make transfers, but never customers' phone numbers or customers an admin has hidden. The server enforces this on every page, search and export, not just in the menus.
 
-**Each role sees only what it needs.** Anyone who opens a spreadsheet sees everything in it. Here, admins manage the full records, while staff see only what they need to make transfers: they never see customers' phone numbers, or customers an admin has hidden. The server enforces these rules on every page, search and export, not just in the menus.
+**Every important action is recorded.** Excel can't tell you who changed, deleted or copied someone's bank details. The activity log can, so the owner always knows who did what, and when.
 
-**Every important action is recorded.** Excel can't tell you who changed, deleted or copied a customer's bank details. The app keeps an activity log of logins, edits, deletions, copies, shares and PDF exports, so the owner always knows who did what, and when.
+**Customers register without staff.** Customers fill in the form themselves, at any time, so nobody has to take down details, retype them or chase missing ones.
 
-**Customers register without staff.** Customers scan a QR code and fill in the form on their own phone, at any time. No staff member has to take down details, retype them or chase missing ones.
-
-The same design makes the data more accurate and more private. Customers type their own account numbers, so staff never mishear or miscopy them, which matters because one wrong digit sends money to the wrong account. Every entry is checked, arrives in the same format and lands in one dated list, so nothing gets lost on paper or buried in chat, and bank details never sit on a desk or in someone's personal messages. Everyone works from one live copy instead of scattered file versions, the data is kept on a protected server instead of one laptop, and staff can search, copy and share to LINE from their phones in seconds.
+Together these make the data more accurate and more private: details are typed once by the person who knows them, checked, kept in one live place on a protected server, and never left on paper or in personal chats.
 
 ## Interface
 
@@ -35,6 +56,18 @@ The same design makes the data more accurate and more private. Customers type th
 </p>
 
 <sub>All data shown is fake, generated by the <code>seed_demo</code> command.</sub>
+
+## Roles
+
+| | Admin | Staff | Public |
+|---|:-:|:-:|:-:|
+| Register through the QR form | | | ✓ |
+| Search, filter and sort customers | All customers | Visible customers only | |
+| See customers' phone numbers | ✓ | | |
+| Copy, share and export PDF | ✓ | ✓ | |
+| Add, edit, hide and delete customers | ✓ | | |
+| Manage staff accounts | ✓ | | |
+| Read the activity log | ✓ | | |
 
 ## Features
 
@@ -93,11 +126,16 @@ Django ─┬─ accounts/   users, login, roles, staff management
 PostgreSQL
 ```
 
-**Design decisions**
-- **Server-rendered HTML with HTMX** instead of a JavaScript framework: less code, and permissions are applied once, on the server.
+**Design decisions**, each driven by the client's situation
+- **Server-rendered HTML with HTMX** instead of a JavaScript framework: less code for a small team to maintain, and permissions are applied once, on the server.
+- **One Django app, one database, no API, queues or caches:** right-sized for a few users and a few hundred records, and cheap to host.
 - **One place for each rule:** `visible_customers(user)` is the only way views read customers, and one helper decides which fields a role may see.
 - **Thin views, small service functions:** each action and its audit-log row run in one database transaction.
-- **Settings from environment variables:** one `settings.py` for development and production; secrets never enter git.
+- **Settings from environment variables:** one `settings.py` for development and production; secrets and the client's name (`SITE_NAME`) never enter git.
+
+## My role
+
+I built this project on my own for a real client: gathering the requirements, designing the data model, permissions and interface, writing the code and tests, and preparing the production deployment.
 
 ## Getting started
 
@@ -119,13 +157,13 @@ Then open http://127.0.0.1:8000.
 ## Tests
 
 ```bash
-uv run pytest        # 396 tests: permissions, privacy rules, exports, security headers, import, UI fragments
+uv run pytest        # 400+ tests: permissions, privacy rules, exports, security headers, import, UI fragments
 uv run ruff check .
 ```
 
 ## Deployment
 
-The app is set up for Render (web service) and Neon (PostgreSQL). `build.sh` installs the locked packages, collects static files, runs Django's production checks and applies migrations. Every setting is documented in [`.env.example`](.env.example). The name shown in the app comes from the `SITE_NAME` setting, so the client's name is never stored in the code.
+The app is set up for Render (web service) and Neon (PostgreSQL). `build.sh` installs the locked packages, collects static files, runs Django's production checks and applies migrations. Every setting is documented in [`.env.example`](.env.example). The name shown in the app is set per deployment with `SITE_NAME`.
 
 ## License
 

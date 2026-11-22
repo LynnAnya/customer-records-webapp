@@ -28,9 +28,10 @@ class Command(BaseCommand):
 
         # Row numbers only below: never print phone or account numbers.
         self.stdout.write(f"Rows read: {result.rows_read}")
-        if result.skipped_existing:
+        if result.skipped_duplicates:
             self.stdout.write(
-                f"Already in the database (skipped): {result.skipped_existing}"
+                "Exact repeats of a saved customer or an earlier row "
+                f"(skipped): {result.skipped_duplicates}"
             )
         if result.duplicate_phone_rows:
             self.stdout.write(

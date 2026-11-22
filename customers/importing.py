@@ -56,6 +56,12 @@ FIELD_LABELS = {
     "account_number": "หมายเลขบัญชี",
     "referral": "ผู้แนะนำ",
 }
+# A row is skipped only when ALL of these match a saved customer or an earlier
+# row (an exact repeat, e.g. the file imported twice). The same person with
+# another plate, bank or account is a separate row: one person may have many
+# cars (decided by the user, 2026-11-22). Referral is left out on purpose: it
+# is not in the client's file and an admin may change it later.
+MATCH_FIELDS = ("name", "license_plate", "phone", "bank_name", "account_number")
 
 
 class ImportFileError(Exception):
@@ -66,7 +72,7 @@ class ImportFileError(Exception):
 class ImportResult:
     rows_read: int = 0
     created: int = 0
-    skipped_existing: int = 0
+    skipped_duplicates: int = 0
     duplicate_phone_rows: list[int] = field(default_factory=list)
     numeric_account_rows: list[int] = field(default_factory=list)
     errors: list[str] = field(default_factory=list)
@@ -159,9 +165,7 @@ def import_customers(path: Path, *, dry_run: bool) -> ImportResult:
     result = ImportResult(rows_read=len(rows), dry_run=dry_run)
 
     existing_phones = set(Customer.objects.values_list("phone", flat=True))
-    existing_people = set(
-        Customer.objects.values_list("name", "phone", "account_number")
-    )
+    seen_rows = set(Customer.objects.values_list(*MATCH_FIELDS))
     phones_in_file: set[str] = set()
     forms: list[ImportCustomerForm] = []
 
@@ -176,12 +180,12 @@ def import_customers(path: Path, *, dry_run: bool) -> ImportResult:
             continue
 
         cleaned = form.cleaned_data
-        person = (cleaned["name"], cleaned["phone"], cleaned["account_number"])
-        if person in existing_people:
-            # Same person already saved (for example the import was run twice).
-            result.skipped_existing += 1
+        values = tuple(cleaned[name] for name in MATCH_FIELDS)
+        if values in seen_rows:
+            # Exact repeat of a saved customer or an earlier row.
+            result.skipped_duplicates += 1
             continue
-        existing_people.add(person)
+        seen_rows.add(values)
         phone = cleaned["phone"]
         if phone != MISSING and (phone in existing_phones or phone in phones_in_file):
             result.duplicate_phone_rows.append(row_number)

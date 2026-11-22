@@ -175,6 +175,42 @@ def test_running_the_same_file_twice_does_not_double_the_customers(excel) -> Non
     assert ActivityLog.objects.count() == 1
 
 
+def test_same_person_with_other_plates_is_imported_once_per_plate(excel) -> None:
+    # One person, many cars: same name, phone, bank and account.
+    plates = ["70-1866", "71-2044", "7888", "8744", "73", "70-550", "82-8397"]
+
+    output = run(excel([row(plate=plate) for plate in plates]))
+
+    saved = Customer.objects.filter(name="สมชาย ใจดี")
+    assert sorted(saved.values_list("license_plate", flat=True)) == sorted(plates)
+    assert "skipped" not in output
+
+
+def test_only_exact_repeats_in_the_file_are_skipped(excel) -> None:
+    rows = [
+        row(),
+        row(),  # exact repeat: skipped
+        row(plate="2ขค 99"),  # another car
+        row(bank="กรุงไทย"),  # another bank
+        row(account="1112223334"),  # another account
+    ]
+
+    output = run(excel(rows))
+
+    assert Customer.objects.count() == 4
+    assert "skipped): 1" in output
+
+
+def test_a_saved_customer_with_another_plate_is_not_a_repeat(excel) -> None:
+    run(excel([row()]))
+
+    output = run(excel([row(), row(plate="9กก 9999")]))
+
+    assert Customer.objects.count() == 2
+    assert "skipped): 1" in output
+    assert "Imported 1 customers" in output
+
+
 # --- Headers and files ----------------------------------------------------
 
 

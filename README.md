@@ -1,16 +1,13 @@
 # Customer Records Web App
 
-A secure customer database built for a small family business that pays its customers by bank transfer. It replaces an Excel file and details collected on paper or in chat with one system: customers register themselves by QR code, staff find and send correct bank details in seconds, and the owner controls who sees what and knows who did what.
+A customer database built for a small family business that pays its customers by bank transfer after they sell plastics for recycling. It replaces an Excel file or details collected on paper with one system: customers register themselves by QR code, staff find and send correct bank details in seconds, and the owner controls who sees what and knows who did what.
 
 Built as real client work with Django, PostgreSQL, HTMX and Alpine.js.
 
 ## The problem
 
-The business keeps a record of each customer, including the bank account they are paid into. Before this app:
-
 - **The records lived in one Excel file.** Anyone who opened it saw everything, copies drifted apart, and nothing showed who changed or copied what.
 - **Details arrived on paper, by phone or in chat** and were retyped by staff. Every retyped account number is a chance to pay the wrong person.
-- **Staff work on their phones and talk in LINE,** where a spreadsheet is slow and awkward.
 
 The users are 1–2 admins, 2–3 staff and a few hundred customers, all Thai-speaking.
 

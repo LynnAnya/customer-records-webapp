@@ -274,7 +274,6 @@ def test_staff_phone_card_never_has_the_phone(client, staff, make_customer) -> N
 
     assert PHONE not in page
     assert "เบอร์โทร" not in page
-    assert 'class="card-actions"' not in page
 
 
 def test_icon_only_buttons_keep_thai_labels(client, admin, make_customer) -> None:
@@ -283,8 +282,9 @@ def test_icon_only_buttons_keep_thai_labels(client, admin, make_customer) -> Non
 
     page = client.get(LIST).text
 
-    for label in ("แก้ไข สมชาย", "ซ่อน สมชาย", "ลบ สมชาย"):
+    for label in ("แก้ไข สมชาย", "ซ่อน สมชาย", "คัดลอก สมชาย", "แชร์ สมชาย"):
         assert f'aria-label="{label}"' in page
+    assert 'aria-label="ลบ สมชาย"' not in page  # delete: selection bar only
     for word in ("คัดลอก", "PDF", "ซ่อน", "แสดง", "ลบ"):
         assert f'<span class="bar-label">{word}</span>' in page
     assert customer.pk

@@ -473,3 +473,58 @@ def test_actions_column_has_a_thai_title(client, admin, make_customer) -> None:
     client.force_login(admin)
 
     assert "การจัดการ" in client.get(LIST).text
+
+
+# --- Row buttons (การจัดการ) -----------------------------------------------
+# Desktop rows: admin edit, hide, copy; staff copy only. Phone cards: the same
+# with share (copy where the phone has no share menu). Delete is only in the
+# selection bar, for admins.
+
+
+def test_rows_have_no_delete_button(client, admin, customer) -> None:
+    client.force_login(admin)
+
+    page = client.get(LIST).text
+
+    assert reverse("customer_delete", args=[customer.pk]) not in page
+    assert reverse("customer_bulk_delete") in page  # selection bar keeps delete
+
+
+def test_admin_rows_have_edit_hide_copy_and_cards_share(
+    client, admin, customer
+) -> None:
+    client.force_login(admin)
+
+    page = client.get(LIST).text
+
+    assert f"/customers/{customer.pk}/edit/" in page
+    assert f'aria-label="ซ่อน {customer.name}"' in page
+    assert f'@click="copy([{customer.pk}])"' in page  # row, and card fallback
+    assert f'@click="openShare([{customer.pk}])"' in page  # card
+
+
+def test_staff_rows_have_copy_and_share_only(client, staff, customer) -> None:
+    client.force_login(staff)
+
+    page = client.get(LIST).text
+
+    assert "การจัดการ" in page
+    assert f'@click="copy([{customer.pk}])"' in page
+    assert f'@click="openShare([{customer.pk}])"' in page
+    for forbidden in ("/edit/", HIDE, "/delete/", f'aria-label="ซ่อน {customer.name}"'):
+        assert forbidden not in page
+
+
+def test_one_row_copy_logs_only_that_customer(client, staff, make_customer) -> None:
+    first = make_customer(name="หนึ่ง")
+    make_customer(name="สอง")
+    client.force_login(staff)
+
+    response = client.post(
+        reverse("customer_share_text"), {"ids": str(first.pk), "kind": "copy"}
+    )
+
+    assert response.status_code == 200
+    assert "หนึ่ง" in response.text and "สอง" not in response.text
+    entry = ActivityLog.objects.get(action="copy")
+    assert entry.details["customer_ids"] == [first.pk]

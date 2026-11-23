@@ -271,10 +271,11 @@
 
       // --- Copy and Share -------------------------------------------------
       // The server builds the text, re-checks every ID and writes the log row
-      // before answering. `kind` is "copy" or "share".
-      fetchText: function (kind) {
+      // before answering. `kind` is "copy" or "share". `ids`: the customers to
+      // send; the ticked ones when not given (selection bar).
+      fetchText: function (kind, ids) {
         var form = this.$refs.exportForm;
-        var body = new URLSearchParams({ ids: this.ids.join(","), kind: kind });
+        var body = new URLSearchParams({ ids: (ids || this.ids).join(","), kind: kind });
         return fetch(form.dataset.textUrl, {
           method: "POST",
           credentials: "same-origin",
@@ -298,10 +299,11 @@
       //    arrives, which iPhones require; otherwise writeText after the text arrives.
       // 2. The older copy command (also works on plain http://).
       // 3. The sheet with the text, where the person copies with one more tap.
-      copy: function () {
+      // `ids`: one row's button passes [id]; the selection bar passes nothing.
+      copy: function (ids) {
         var self = this;
         this.busy = true;
-        var fetched = this.fetchText("copy");
+        var fetched = this.fetchText("copy", Array.isArray(ids) ? ids : null);
         var written;
         try {
           if (navigator.clipboard && window.ClipboardItem) {
@@ -332,10 +334,11 @@
       },
       // Toolbar Share: fetch first, then the sheet. The sheet's own Share
       // button calls navigator.share from its click, as iOS requires.
-      openShare: function () {
+      // `ids`: one card's button passes [id]; the selection bar passes nothing.
+      openShare: function (ids) {
         var self = this;
         this.busy = true;
-        this.fetchText("share")
+        this.fetchText("share", Array.isArray(ids) ? ids : null)
           .then(function (result) { self.openSheet(result.text); })
           .catch(function () { self.flash("เตรียมข้อความไม่สำเร็จ กรุณาลองใหม่"); })
           .finally(function () { self.busy = false; });

@@ -23,8 +23,9 @@
   </td>
   <td{% if is_admin %} class="col-spaced"{% endif %}>{{ customer.referral }}</td>
   <td class="whitespace-nowrap text-muted" title="{{ customer.created_at|date:'j F Y H:i' }}">{{ customer.created_at|date:"j M Y" }}</td>
-  {% if is_admin %}
+  {# Admins: edit, hide, copy. Staff: copy only. Delete lives in the selection bar (tick the row first). #}
   <td class="actions-cell">
+    {% if is_admin %}
     {% with here=list_url|urlencode %}
     <a class="icon-btn" href="{% url 'customer_edit' customer.pk %}?next={{ here }}" title="แก้ไข" aria-label="แก้ไข {{ customer.name }}">{% include "components/icon.html" with name="pencil" class="size-4.5" %}</a>
     <form method="post" action="{% url 'customer_set_hidden' %}" class="inline">
@@ -38,10 +39,10 @@
       <button type="submit" class="icon-btn" title="ซ่อนจากพนักงาน" aria-label="ซ่อน {{ customer.name }}">{% include "components/icon.html" with name="eye-off" class="size-4.5" %}</button>
       {% endif %}
     </form>
-    <a class="icon-btn icon-btn-danger" href="{% url 'customer_delete' customer.pk %}?next={{ here }}" title="ลบ" aria-label="ลบ {{ customer.name }}">{% include "components/icon.html" with name="trash" class="size-4.5" %}</a>
     {% endwith %}
+    {% endif %}
+    <button type="button" class="icon-btn" title="คัดลอก" aria-label="คัดลอก {{ customer.name }}" @click="copy([{{ customer.pk }}])" :disabled="busy">{% include "components/icon.html" with name="copy" class="size-4.5" %}</button>
   </td>
-  {% endif %}
 </tr>
 {% endpartialdef %}
 
@@ -76,8 +77,9 @@
     <div class="card-detail">{% include "components/icon.html" with name="user" class="size-4" %}<dt>ผู้แนะนำ</dt><dd>{{ customer.referral }}</dd></div>
     <div class="card-detail">{% include "components/icon.html" with name="calendar" class="size-4" %}<dt>วันที่เพิ่ม</dt><dd>{{ customer.created_at|date:"j M Y" }}</dd></div>
   </dl>
-  {% if is_admin %}
+  {# Admins: edit, hide, share. Staff: share only. Phones without the share menu (e.g. LINE's own browser) get copy instead. #}
   <div class="card-actions">
+    {% if is_admin %}
     {% with here=list_url|urlencode %}
     <a class="card-action" href="{% url 'customer_edit' customer.pk %}?next={{ here }}" aria-label="แก้ไข {{ customer.name }}" title="แก้ไข">{% include "components/icon.html" with name="pencil" %}</a>
     <form method="post" action="{% url 'customer_set_hidden' %}" class="flex">
@@ -91,10 +93,11 @@
       <button type="submit" class="card-action flex-1" aria-label="ซ่อน {{ customer.name }}" title="ซ่อน">{% include "components/icon.html" with name="eye-off" %}</button>
       {% endif %}
     </form>
-    <a class="card-action text-danger" href="{% url 'customer_delete' customer.pk %}?next={{ here }}" aria-label="ลบ {{ customer.name }}" title="ลบ">{% include "components/icon.html" with name="trash" %}</a>
     {% endwith %}
+    {% endif %}
+    <button type="button" class="card-action" aria-label="แชร์ {{ customer.name }}" title="แชร์" x-show="canShare" x-cloak @click="openShare([{{ customer.pk }}])" :disabled="busy">{% include "components/icon.html" with name="share" %}</button>
+    <button type="button" class="card-action" aria-label="คัดลอก {{ customer.name }}" title="คัดลอก" x-show="!canShare" @click="copy([{{ customer.pk }}])" :disabled="busy">{% include "components/icon.html" with name="copy" %}</button>
   </div>
-  {% endif %}
 </li>
 {% endpartialdef %}
 
@@ -216,7 +219,11 @@
   </div>
 </form>
 
-{# Shown while customers are ticked. Copy, PDF and hide buttons are added in later steps. #}
+{# Copy / Share result from a row button while nothing is ticked (the selection bar, which shows it otherwise, is hidden then). #}
+<div class="pointer-events-none fixed inset-x-3 top-16 z-50 flex flex-col items-end lg:top-auto lg:right-6 lg:bottom-6 lg:left-auto" aria-live="polite">
+  <div class="toast toast-info max-w-md" x-show="notice && ids.length === 0 && !sheetOpen" x-text="notice" x-transition.opacity x-cloak role="status"></div>
+</div>
+{# Shown while customers are ticked: copy, share, PDF, and for admins hide, show and delete. #}
 {# Phones: count and text on the left, "clear" top right (thumb reach), then icon buttons spread evenly across the bar. Desktop: text buttons. #}
 <div class="selection-bar" x-show="ids.length > 0" x-cloak role="status">
   <div class="flex items-center gap-3 max-md:w-full">
@@ -315,7 +322,7 @@
               {% if sort == "newest" %}{% include "components/icon.html" with name="arrow-down" class="size-4" %}{% elif sort == "oldest" %}{% include "components/icon.html" with name="arrow-up" class="size-4" %}{% endif %}
             </button>
           </th>
-          {% if is_admin %}<th scope="col" class="actions-cell">การจัดการ</th>{% endif %}
+          <th scope="col" class="actions-cell">การจัดการ</th>
         </tr>
       </thead>
       <tbody>

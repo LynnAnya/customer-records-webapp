@@ -290,7 +290,7 @@ def test_icon_only_buttons_keep_thai_labels(client, admin, make_customer) -> Non
     assert customer.pk
 
 
-def test_desktop_table_shows_the_account_under_the_bank(
+def test_desktop_table_has_separate_bank_and_account_columns(
     client, staff, make_customer
 ) -> None:
     make_customer(bank_name="กรุงไทย", account_number=ACCOUNT)
@@ -298,9 +298,11 @@ def test_desktop_table_shows_the_account_under_the_bank(
 
     page = client.get(TABLE).text
 
-    assert "ธนาคาร / บัญชี" in page
-    assert '<span class="block">กรุงไทย</span>' in page
-    assert '<span class="sr-only">เลขที่บัญชี </span>•••• 3210' in page
+    assert "ธนาคาร / บัญชี" not in page
+    assert '<th scope="col">เลขที่บัญชี</th>' in page
+    assert "<td>กรุงไทย</td>" in page
+    assert '<td class="tabular-nums whitespace-nowrap">•••• 3210</td>' in page
+    assert ACCOUNT not in page
 
 
 # --- Injection: customer text is only ever plain text ---------------------

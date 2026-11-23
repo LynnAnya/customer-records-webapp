@@ -16,12 +16,9 @@
   {# Long plates (with a province) wrap onto two lines, so one long plate does not widen the whole column. #}
   <td><span class="cell-wrap">{{ customer.license_plate }}</span></td>
   {% if show_phone %}<td class="tabular-nums whitespace-nowrap">{{ customer.phone }}{% if customer.has_duplicate_phone %}<br><span class="badge badge-signal" title="มีลูกค้ารายอื่นใช้เบอร์เดียวกัน">เบอร์ซ้ำ</span>{% endif %}</td>{% endif %}
-  {# Bank with the masked account number under it, smaller and muted. #}
-  <td>
-    <span class="block">{{ customer.bank_name }}</span>
-    <span class="block text-sm text-muted tabular-nums whitespace-nowrap"><span class="sr-only">เลขที่บัญชี </span>{{ customer.account_number|masked }}</span>
-  </td>
-  <td{% if is_admin %} class="col-spaced"{% endif %}>{{ customer.referral }}</td>
+  <td>{{ customer.bank_name }}</td>
+  <td class="tabular-nums whitespace-nowrap">{{ customer.account_number|masked }}</td>
+  <td>{{ customer.referral }}</td>
   <td class="whitespace-nowrap text-muted" title="{{ customer.created_at|date:'j F Y H:i' }}">{{ customer.created_at|date:"j M Y" }}</td>
   {# Admins: edit, hide, copy. Staff: copy only. Delete lives in the selection bar (tick the row first). #}
   <td class="actions-cell">
@@ -311,11 +308,12 @@
           {% if show_phone %}<th scope="col">เบอร์โทร</th>{% endif %}
           <th scope="col">
             <button type="button" class="sort-btn" @click="$dispatch('set-sort', '{% if sort == 'bank_az' %}bank_za{% else %}bank_az{% endif %}')">
-              ธนาคาร / บัญชี
+              ธนาคาร
               {% if sort == "bank_az" %}{% include "components/icon.html" with name="arrow-up" class="size-4" %}{% elif sort == "bank_za" %}{% include "components/icon.html" with name="arrow-down" class="size-4" %}{% endif %}
             </button>
           </th>
-          <th scope="col"{% if is_admin %} class="col-spaced"{% endif %}>ผู้แนะนำ</th>
+          <th scope="col">เลขที่บัญชี</th>
+          <th scope="col">ผู้แนะนำ</th>
           <th scope="col">
             <button type="button" class="sort-btn" @click="$dispatch('set-sort', '{% if sort == 'newest' %}oldest{% else %}newest{% endif %}')">
               วันที่เพิ่ม

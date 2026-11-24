@@ -224,6 +224,31 @@ def test_only_exact_repeats_in_the_file_are_skipped(excel) -> None:
     assert "skipped): 1" in output
 
 
+@pytest.mark.parametrize(
+    ("saved", "in_file"), [("0", None), ("0", "-"), ("-", "0"), ("00", None)]
+)
+def test_dash_zero_and_empty_count_as_the_same_no_data(
+    excel, make_customer, saved, in_file
+) -> None:
+    # An admin changed "-" to 0 after the first import: still the same row.
+    make_customer(name="สมชาย ใจดี", license_plate="1กข 1234", phone=saved,
+                  bank_name="กสิกรไทย", account_number=saved)  # fmt: skip
+
+    output = run(excel([row(phone=in_file, account=in_file)]))
+
+    assert Customer.objects.count() == 1
+    assert "skipped): 1" in output
+
+
+def test_real_numbers_are_still_compared_exactly(excel, make_customer) -> None:
+    make_customer(name="สมชาย ใจดี", license_plate="1กข 1234", phone="0811112223",
+                  bank_name="กสิกรไทย", account_number="0001234567")  # fmt: skip
+
+    run(excel([row()]))  # phone 0811112222: one digit differs
+
+    assert Customer.objects.count() == 2
+
+
 def test_a_saved_customer_with_another_plate_is_not_a_repeat(excel) -> None:
     run(excel([row()]))
 

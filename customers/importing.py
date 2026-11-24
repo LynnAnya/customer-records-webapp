@@ -19,7 +19,7 @@ from openpyxl import load_workbook
 from audit.models import ActivityLog
 from audit.services import log_action
 from customers.forms import ImportCustomerForm
-from customers.models import Customer, is_no_data
+from customers.models import MISSING, Customer, is_no_data
 
 # Header text (lower-case, spaces removed) -> form field.
 HEADER_ALIASES: dict[str, str] = {
@@ -225,6 +225,15 @@ def _data_rows(columns: list[str], rows) -> list[tuple[int, dict[str, object]]]:
     return data
 
 
+def _match_key(values: tuple[str, ...]) -> tuple[str, ...]:
+    """Values compared to find exact repeats. "-", 0 and an empty cell all mean
+    "no data yet", so a saved customer whose "-" an admin changed to 0 still
+    matches the Excel row (decided by the user, 2026-11-24)."""
+    return tuple(
+        MISSING if not value or is_no_data(value) else value for value in values
+    )
+
+
 def _account_is_valid(text: str) -> bool:
     """Empty, "-" or digits once spaces and dashes are removed (as the form)."""
     digits = re.sub(r"[\s-]", "", text)
@@ -263,7 +272,7 @@ def import_customers(
     )
 
     existing_phones = set(Customer.objects.values_list("phone", flat=True))
-    seen_rows = set(Customer.objects.values_list(*MATCH_FIELDS))
+    seen_rows = {_match_key(row) for row in Customer.objects.values_list(*MATCH_FIELDS)}
     phones_in_file: set[str] = set()
     forms: list[ImportCustomerForm] = []
 
@@ -284,7 +293,7 @@ def import_customers(
             continue
 
         cleaned = form.cleaned_data
-        values = tuple(cleaned[name] for name in MATCH_FIELDS)
+        values = _match_key(tuple(cleaned[name] for name in MATCH_FIELDS))
         if values in seen_rows:
             # Exact repeat of a saved customer or an earlier row.
             result.skipped_duplicates += 1

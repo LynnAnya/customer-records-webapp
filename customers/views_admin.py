@@ -13,7 +13,7 @@ from customers import services
 from customers.filters import parse_selected_ids
 from customers.forms import AdminCustomerForm
 from customers.models import Customer
-from customers.queries import phone_duplicates, visible_customers
+from customers.queries import account_duplicates, phone_duplicates, visible_customers
 
 
 def _back_url(request: HttpRequest) -> str:
@@ -32,14 +32,22 @@ def _back_to_list(request: HttpRequest) -> HttpResponse:
     return redirect(_back_url(request))
 
 
-def _warn_about_duplicate_phone(request: HttpRequest, customer: Customer) -> None:
-    """Duplicate phones are allowed, but the admin is told about them."""
-    others = [other.name for other in phone_duplicates(customer)[:5]]
-    if others:
-        messages.warning(
-            request,
-            f"เบอร์โทรของ {customer.name} ซ้ำกับลูกค้ารายอื่น: {', '.join(others)}",
-        )
+def _warn_about_duplicates(request: HttpRequest, customer: Customer) -> None:
+    """Duplicate phones and account numbers are allowed, but the admin is told.
+
+    Names only: never the phone or account number itself.
+    """
+    checks = (
+        ("เบอร์โทร", phone_duplicates(customer)),
+        ("เลขที่บัญชี", account_duplicates(customer)),
+    )
+    for label, duplicates in checks:
+        others = [other.name for other in duplicates[:5]]
+        if others:
+            messages.warning(
+                request,
+                f"{label}ของ {customer.name} ซ้ำกับลูกค้ารายอื่น: {', '.join(others)}",
+            )
 
 
 @admin_required
@@ -49,7 +57,7 @@ def customer_create(request: HttpRequest) -> HttpResponse:
     if request.method == "POST" and form.is_valid():
         customer = services.create_customer(form, request.user, get_client_ip(request))
         messages.success(request, f"เพิ่มลูกค้า {customer.name} แล้ว")
-        _warn_about_duplicate_phone(request, customer)
+        _warn_about_duplicates(request, customer)
         return _back_to_list(request)
     context = {"form": form, "customer": None, "back_url": _back_url(request)}
     return render(request, "customers/form.html", context)
@@ -63,12 +71,13 @@ def customer_edit(request: HttpRequest, pk: int) -> HttpResponse:
     if request.method == "POST" and form.is_valid():
         customer = services.update_customer(form, request.user, get_client_ip(request))
         messages.success(request, f"บันทึกข้อมูล {customer.name} แล้ว")
-        _warn_about_duplicate_phone(request, customer)
+        _warn_about_duplicates(request, customer)
         return _back_to_list(request)
     context = {
         "form": form,
         "customer": customer,
         "duplicates": phone_duplicates(customer)[:5],
+        "account_duplicates": account_duplicates(customer)[:5],
         "back_url": _back_url(request),
     }
     return render(request, "customers/form.html", context)

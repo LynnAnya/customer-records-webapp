@@ -17,7 +17,7 @@
   <td><span class="cell-wrap">{{ customer.license_plate }}</span></td>
   {% if show_phone %}<td class="tabular-nums whitespace-nowrap">{{ customer.phone }}{% if customer.has_duplicate_phone %}<br><span class="badge badge-signal" title="มีลูกค้ารายอื่นใช้เบอร์เดียวกัน">เบอร์ซ้ำ</span>{% endif %}</td>{% endif %}
   <td>{{ customer.bank_name }}</td>
-  <td class="tabular-nums whitespace-nowrap">{{ customer.account_number|masked }}</td>
+  <td class="tabular-nums whitespace-nowrap">{{ customer.account_number|masked }}{% if customer.has_duplicate_account %}<br><span class="badge badge-signal" title="มีลูกค้ารายอื่นใช้เลขบัญชีเดียวกัน">บัญชีซ้ำ</span>{% endif %}</td>
   <td>{{ customer.referral }}</td>
   <td class="whitespace-nowrap text-muted" title="{{ customer.created_at|date:'j F Y H:i' }}">{{ customer.created_at|date:"j M Y" }}</td>
   {# Admins: edit, hide, copy. Staff: copy only. Delete lives in the selection bar (tick the row first). #}
@@ -69,7 +69,7 @@
   </div>
   <dl id="card-details-{{ customer.pk }}" class="card-details" hidden :hidden="!isOpen({{ customer.pk }})">
     <div class="card-detail">{% include "components/icon.html" with name="car" class="size-4" %}<dt>ทะเบียนรถ</dt><dd>{{ customer.license_plate }}</dd></div>
-    <div class="card-detail">{% include "components/icon.html" with name="landmark" class="size-4" %}<dt>ธนาคาร</dt><dd>{{ customer.bank_name }} <span class="ml-1 tabular-nums">{{ customer.account_number|masked }}</span></dd></div>
+    <div class="card-detail">{% include "components/icon.html" with name="landmark" class="size-4" %}<dt>ธนาคาร</dt><dd>{{ customer.bank_name }} <span class="ml-1 tabular-nums">{{ customer.account_number|masked }}</span>{% if customer.has_duplicate_account %} <span class="badge badge-signal ml-1">บัญชีซ้ำ</span>{% endif %}</dd></div>
     {% if show_phone %}<div class="card-detail">{% include "components/icon.html" with name="phone" class="size-4" %}<dt>เบอร์โทร</dt><dd class="tabular-nums">{{ customer.phone }}{% if customer.has_duplicate_phone %} <span class="badge badge-signal ml-1">เบอร์ซ้ำ</span>{% endif %}</dd></div>{% endif %}
     <div class="card-detail">{% include "components/icon.html" with name="user" class="size-4" %}<dt>ผู้แนะนำ</dt><dd>{{ customer.referral }}</dd></div>
     <div class="card-detail">{% include "components/icon.html" with name="calendar" class="size-4" %}<dt>วันที่เพิ่ม</dt><dd>{{ customer.created_at|date:"j M Y" }}</dd></div>

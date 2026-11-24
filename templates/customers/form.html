@@ -6,11 +6,18 @@
 <div class="max-w-3xl">
   <h1 class="text-3xl font-bold leading-snug">{% if customer %}แก้ไขลูกค้า{% else %}เพิ่มลูกค้า{% endif %}</h1>
   {% if customer %}<p class="mt-1 text-muted">{{ customer.name }}</p>{% endif %}
+  <p class="mt-1 text-muted">ข้อมูลที่ยังไม่มี ใส่ - ไว้ก่อนได้ แล้วค่อยกลับมาแก้ไข</p>
 
   {% if duplicates %}
   <div class="notice-warning mt-5" role="note">
     <span class="mt-0.5 text-signal">{% include "components/icon.html" with name="alert" %}</span>
     <p>เบอร์โทรนี้ซ้ำกับลูกค้ารายอื่น: {% for other in duplicates %}<strong>{{ other.name }}</strong>{% if not forloop.last %}, {% endif %}{% endfor %}<br><span class="text-muted">ระบบอนุญาตให้ซ้ำได้ โปรดตรวจสอบว่าเป็นคนละคนกันจริง</span></p>
+  </div>
+  {% endif %}
+  {% if account_duplicates %}
+  <div class="notice-warning mt-5" role="note">
+    <span class="mt-0.5 text-signal">{% include "components/icon.html" with name="alert" %}</span>
+    <p>เลขที่บัญชีนี้ซ้ำกับลูกค้ารายอื่น: {% for other in account_duplicates %}<strong>{{ other.name }}</strong>{% if not forloop.last %}, {% endif %}{% endfor %}<br><span class="text-muted">ระบบอนุญาตให้ซ้ำได้ เช่น คนเดียวกันที่มีรถหลายคัน</span></p>
   </div>
   {% endif %}
 

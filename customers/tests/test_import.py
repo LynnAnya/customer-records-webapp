@@ -263,8 +263,9 @@ def test_phone_text_is_kept_as_written(excel) -> None:
     assert Customer.objects.get().phone == "ใช้เบอร์ John"
 
 
-def test_rows_without_a_phone_are_not_flagged_as_duplicates(excel) -> None:
-    output = run(excel([row(phone=None), row(name="ปิติ", phone=None)]))
+@pytest.mark.parametrize("empty", [None, "0", "-"])
+def test_rows_without_a_phone_are_not_flagged_as_duplicates(excel, empty) -> None:
+    output = run(excel([row(phone=empty), row(name="ปิติ", phone=empty)]))
 
     assert Customer.objects.count() == 2
     assert "Phone already used" not in output

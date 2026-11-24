@@ -119,13 +119,14 @@ def test_admin_adds_a_customer(client, admin) -> None:
     assert created.referral == "บริษัท"
 
 
-def test_add_uses_the_same_validation_as_the_public_form(client, admin) -> None:
+@pytest.mark.parametrize("account", ["abc", "12ab", "1" * 21, "ยังไม่มี"])
+def test_add_refuses_an_account_number_with_letters(client, admin, account) -> None:
     client.force_login(admin)
 
-    response = client.post(CREATE, form_data(phone="-", account_number="abc"))
+    response = client.post(CREATE, form_data(account_number=account))
 
     assert response.status_code == 200
-    assert {"phone", "account_number"} <= set(response.context["form"].errors)
+    assert "account_number" in response.context["form"].errors
     assert Customer.objects.count() == 0
     assert logged().count() == 0
 
@@ -148,14 +149,53 @@ def test_phone_is_free_text_but_a_plain_number_is_cleaned(client, admin) -> None
     assert Customer.objects.get(name="ข").phone == PHONE
 
 
-def test_a_note_is_accepted_but_a_lone_dash_is_not(client, admin) -> None:
+DASH_FIELDS = ("name", "license_plate", "phone", "bank_name", "account_number")
+
+
+def test_admin_may_add_a_customer_with_a_dash_in_every_field(client, admin) -> None:
+    # Details not known yet are recorded as "-" (decided 2026-11-24).
     client.force_login(admin)
 
-    refused = client.post(CREATE, form_data(license_plate="-", bank_name="ยังไม่มี"))
+    response = client.post(CREATE, form_data(**dict.fromkeys(DASH_FIELDS, "-")))
 
-    assert "license_plate" in refused.context["form"].errors
-    assert "bank_name" not in refused.context["form"].errors
-    assert Customer.objects.count() == 0
+    assert response.status_code == 302
+    saved = Customer.objects.get()
+    assert all(getattr(saved, name) == "-" for name in DASH_FIELDS)
+
+
+def test_a_double_dash_is_saved_as_one_dash(client, admin) -> None:
+    client.force_login(admin)
+
+    client.post(CREATE, form_data(phone="--", account_number=" - "))
+
+    saved = Customer.objects.get()
+    assert (saved.phone, saved.account_number) == ("-", "-")
+
+
+def test_saving_an_imported_row_unchanged_keeps_its_dashes(
+    client, admin, make_customer
+) -> None:
+    imported = make_customer(phone="-", account_number="-", bank_name="-",
+                             created_by=Customer.CreatedBy.EXCEL)  # fmt: skip
+    client.force_login(admin)
+    edit = reverse("customer_edit", args=[imported.pk])
+    unchanged = {
+        name: value for name, value in client.get(edit).context["form"].initial.items()
+    }
+
+    response = client.post(edit, {**unchanged, "referral": imported.referral})
+
+    assert response.status_code == 302
+    imported.refresh_from_db()
+    assert (imported.phone, imported.account_number, imported.bank_name) == ("-",) * 3
+
+
+def test_a_note_is_accepted(client, admin) -> None:
+    client.force_login(admin)
+
+    client.post(CREATE, form_data(bank_name="ยังไม่มี"))
+
+    assert Customer.objects.get().bank_name == "ยังไม่มี"
 
 
 # --- Duplicate phone: allowed, but flagged --------------------------------
@@ -172,6 +212,19 @@ def test_duplicate_phone_is_saved_with_a_warning(client, admin, make_customer) -
     assert len(warnings) == 1
     assert "คนแรก เดิม" in warnings[0]
     assert PHONE not in warnings[0]
+
+
+def test_duplicate_account_is_saved_with_a_warning(
+    client, admin, make_customer
+) -> None:
+    make_customer(name="เจ้าของบัญชี", phone="0800000002", account_number=ACCOUNT)
+    client.force_login(admin)
+
+    response = client.post(CREATE, form_data())
+
+    warnings = [text for text in message_texts(response) if "ซ้ำ" in text]
+    assert warnings == ["เลขที่บัญชีของ สมชาย ใจดี ซ้ำกับลูกค้ารายอื่น: เจ้าของบัญชี"]
+    assert Customer.objects.filter(account_number=ACCOUNT).count() == 2
 
 
 def test_unique_phone_gives_no_warning(client, admin, customer) -> None:
@@ -528,3 +581,77 @@ def test_one_row_copy_logs_only_that_customer(client, staff, make_customer) -> N
     assert "หนึ่ง" in response.text and "สอง" not in response.text
     entry = ActivityLog.objects.get(action="copy")
     assert entry.details["customer_ids"] == [first.pk]
+
+
+def test_list_flags_duplicate_accounts_for_admin_only(
+    client, admin, staff, make_customer
+) -> None:
+    make_customer(phone="0800000001", account_number=ACCOUNT)
+    make_customer(phone="0800000002", account_number=ACCOUNT)  # same person or not
+    make_customer(phone="0800000003", account_number="-")
+    make_customer(phone="0800000004", account_number="-")  # "-" is never a duplicate
+    make_customer(phone="0800000005", account_number="1112223334")
+
+    client.force_login(admin)
+    admin_page = client.get(LIST)
+    client.force_login(staff)
+    staff_page = client.get(LIST)
+
+    assert admin_page.text.count("บัญชีซ้ำ</span>") == 4  # 2 rows, table + cards
+    assert "บัญชีซ้ำ" not in staff_page.text
+    assert not hasattr(
+        staff_page.context["page"].object_list[0], "has_duplicate_account"
+    )
+
+
+def test_dashes_are_never_flagged_as_duplicate_phones(
+    client, admin, make_customer
+) -> None:
+    make_customer(phone="-", account_number="1112223331")
+    make_customer(phone="-", account_number="1112223332")
+    client.force_login(admin)
+
+    assert "เบอร์ซ้ำ" not in client.get(LIST).text
+
+
+def test_edit_page_lists_customers_with_the_same_account(
+    client, admin, make_customer
+) -> None:
+    make_customer(name="เจ้าของเดิม", phone="0800000001", account_number=ACCOUNT)
+    other = make_customer(name="คนใหม่", phone="0800000002", account_number=ACCOUNT)
+    client.force_login(admin)
+
+    page = client.get(reverse("customer_edit", args=[other.pk])).text
+
+    assert "เลขที่บัญชีนี้ซ้ำกับลูกค้ารายอื่น" in page
+    assert "<strong>เจ้าของเดิม</strong>" in page
+
+
+@pytest.mark.parametrize("empty", ["-", "0", "000"])
+def test_no_data_values_are_never_duplicates(
+    client, admin, make_customer, empty
+) -> None:
+    # "-" and 0 both mean "nothing here yet" (decided 2026-11-24).
+    make_customer(name="ก", phone=empty, account_number=empty)
+    second = make_customer(name="ข", phone=empty, account_number=empty)
+    client.force_login(admin)
+
+    page = client.get(LIST).text
+    edit = client.get(reverse("customer_edit", args=[second.pk])).text
+    saved = client.post(CREATE, form_data(name="ค", phone=empty, account_number=empty))
+
+    assert "เบอร์ซ้ำ" not in page and "บัญชีซ้ำ" not in page
+    assert "ซ้ำกับลูกค้ารายอื่น" not in edit
+    assert not [text for text in message_texts(saved) if "ซ้ำ" in text]
+
+
+def test_a_real_number_that_contains_zeros_still_counts(
+    client, admin, make_customer
+) -> None:
+    make_customer(phone="0800000000", account_number="0000012345")
+    make_customer(phone="0800000000", account_number="0000012345")
+    client.force_login(admin)
+
+    page = client.get(LIST).text
+
+    assert page.count("เบอร์ซ้ำ</span>") == 4 and page.count("บัญชีซ้ำ</span>") == 4

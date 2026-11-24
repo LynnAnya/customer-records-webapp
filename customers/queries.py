@@ -3,7 +3,7 @@ from django.db.models import Exists, OuterRef, Q, QuerySet
 from django.db.models.functions import Collate
 
 from customers.filters import CustomerFilters, apply_filters
-from customers.models import MISSING, Customer
+from customers.models import NO_DATA_PATTERN, Customer, is_no_data
 from customers.visibility import can_see_phone, visible_fields
 
 # Postgres' built-in Thai (ICU) collation, so names sort ก-ฮ the way Thai readers
@@ -66,7 +66,7 @@ def search_customers(
         for field in fields:
             matches_word |= Q(**{f"{field}__icontains": word})
         customers = customers.filter(matches_word)
-    customers = _flag_duplicate_phones(customers, user)
+    customers = _flag_duplicates(customers, user)
     return customers.order_by(*SORTS[clean_sort(sort)])
 
 
@@ -78,32 +78,49 @@ def pinned_customers(
     IDs from the browser are never trusted: each one is looked up through
     `visible_customers(user)`, so hidden or deleted customers are dropped.
     """
-    by_id = _flag_duplicate_phones(visible_customers(user), user).in_bulk(ids)
+    by_id = _flag_duplicates(visible_customers(user), user).in_bulk(ids)
     pinned = [by_id[pk] for pk in ids if pk in by_id]
     dropped = [pk for pk in ids if pk not in by_id]
     return pinned, dropped
 
 
-def _flag_duplicate_phones(
+def _flag_duplicates(
     customers: QuerySet[Customer], user: AbstractBaseUser | AnonymousUser
 ) -> QuerySet[Customer]:
-    """Add `has_duplicate_phone` to each row, for admins only.
+    """Add `has_duplicate_phone` and `has_duplicate_account`, for admins only.
 
-    Staff never see phones, so they get no hint about them either.
+    Staff never see phones, so they get no hint about them either; the account
+    tag is admin only too (decided by the user, 2026-11-24). Any other customer
+    counts, also the same person with another car.
     """
     if not can_see_phone(user):
         return customers
-    # "-" means "no phone" (old Excel rows), so it never counts as a duplicate.
+    # "-" and 0 mean "not known yet", so they never count as a duplicate.
+    same_account = (
+        Customer.objects.filter(account_number=OuterRef("account_number"))
+        .exclude(account_number__regex=NO_DATA_PATTERN)
+        .exclude(pk=OuterRef("pk"))
+    )
+    customers = customers.annotate(has_duplicate_account=Exists(same_account))
     same_phone = (
         Customer.objects.filter(phone=OuterRef("phone"))
-        .exclude(phone=MISSING)
+        .exclude(phone__regex=NO_DATA_PATTERN)
         .exclude(pk=OuterRef("pk"))
     )
     return customers.annotate(has_duplicate_phone=Exists(same_phone))
 
 
+def account_duplicates(customer: Customer) -> QuerySet[Customer]:
+    """Other customers with the same account number. For admin pages only."""
+    if is_no_data(customer.account_number):
+        return Customer.objects.none()
+    return Customer.objects.filter(account_number=customer.account_number).exclude(
+        pk=customer.pk
+    )
+
+
 def phone_duplicates(customer: Customer) -> QuerySet[Customer]:
     """Other customers with the same phone. For admin pages only."""
-    if customer.phone == MISSING:
+    if is_no_data(customer.phone):
         return Customer.objects.none()
     return Customer.objects.filter(phone=customer.phone).exclude(pk=customer.pk)

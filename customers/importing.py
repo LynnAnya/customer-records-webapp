@@ -19,7 +19,7 @@ from openpyxl import load_workbook
 from audit.models import ActivityLog
 from audit.services import log_action
 from customers.forms import ImportCustomerForm
-from customers.models import MISSING, Customer
+from customers.models import Customer, is_no_data
 
 # Header text (lower-case, spaces removed) -> form field.
 HEADER_ALIASES: dict[str, str] = {
@@ -291,7 +291,9 @@ def import_customers(
             continue
         seen_rows.add(values)
         phone = cleaned["phone"]
-        if phone != MISSING and (phone in existing_phones or phone in phones_in_file):
+        if not is_no_data(phone) and (
+            phone in existing_phones or phone in phones_in_file
+        ):
             result.duplicate_phone_rows.append(row_number)
         phones_in_file.add(phone)
         forms.append(form)

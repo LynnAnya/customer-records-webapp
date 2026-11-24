@@ -92,12 +92,41 @@ class CustomerForm(forms.ModelForm):
         return cleaned
 
 
+class DigitsOrMissingField(DigitsField):
+    """Like DigitsField, but a lone "-" (or "--") is kept as "-"."""
+
+    def to_python(self, value: str | None) -> str:
+        text = forms.CharField.to_python(self, value)
+        return MISSING if is_placeholder(text) else super().to_python(value)
+
+
+ADMIN_ACCOUNT_ERROR = "กรุณากรอกเลขที่บัญชีเป็นตัวเลข ไม่เกิน 20 หลัก หรือใส่ - ถ้ายังไม่มี"
+
+
 class AdminCustomerForm(CustomerForm):
-    """Admin add and edit: the shared fields, no honeypot."""
+    """Admin add and edit: the shared fields, no honeypot.
+
+    Unlike the public QR form, "-" is accepted in every field, for details that
+    are not known yet (decided by the user, 2026-11-24). The account number is
+    still digits only, or "-".
+    """
+
+    account_number = DigitsOrMissingField(
+        label="เลขที่บัญชี",
+        validators=[RegexValidator(r"^(\d{1,20}|-)$", ADMIN_ACCOUNT_ERROR)],
+        widget=forms.TextInput(attrs=NUMBER_INPUT),
+    )
 
     @property
     def customer_fields(self) -> list[forms.BoundField]:
         return [self[name] for name in CUSTOMER_FIELDS]
+
+    def clean(self) -> dict:
+        cleaned = forms.ModelForm.clean(self)
+        for name in ("name", "license_plate", "phone", "bank_name"):
+            if is_placeholder(cleaned.get(name, "")):
+                cleaned[name] = MISSING
+        return cleaned
 
 
 class ImportCustomerForm(CustomerForm):

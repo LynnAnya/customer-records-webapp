@@ -4,9 +4,18 @@ from django.core.validators import RegexValidator
 from django.db import models
 
 DEFAULT_REFERRAL = "บริษัท"
-# Stored for a value the old Excel file did not have. App forms never accept it,
-# so only imported rows can hold it.
+# Stored for a value that is not known yet: an empty Excel cell, or typed by an
+# admin. The public QR form never accepts it.
 MISSING = "-"
+# "-" and a plain 0 (or 00, 000) both mean "no data in this field yet", so they
+# never count as a duplicate phone or account (decided by the user, 2026-11-24).
+NO_DATA_PATTERN = r"^(-|0+)$"
+
+
+def is_no_data(value: str) -> bool:
+    return bool(re.fullmatch(NO_DATA_PATTERN, value))
+
+
 account_number_text = RegexValidator(r"^(\d+|-)$", "กรุณากรอกเฉพาะตัวเลข")
 
 

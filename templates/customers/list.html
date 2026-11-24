@@ -103,7 +103,11 @@
 <div class="flex items-center justify-between gap-4">
   <h1 class="text-3xl font-bold leading-snug">สวัสดี {{ request.user.first_name|default:request.user.username }}</h1>
   {% if is_admin %}
-  <a href="{% url 'customer_create' %}" class="btn btn-primary max-lg:hidden">{% include "components/icon.html" with name="plus" %}เพิ่มลูกค้า</a>
+  {# Excel upload: desktop only (the file is normally on a laptop, decided 2026-11-24). #}
+  <div class="flex items-center gap-3 max-lg:hidden">
+    <a href="{% url 'customer_import' %}" class="btn btn-excel">{% include "components/icon.html" with name="file-spreadsheet" %}เพิ่มลูกค้าจาก Excel</a>
+    <a href="{% url 'customer_create' %}" class="btn btn-primary">{% include "components/icon.html" with name="plus" %}เพิ่มลูกค้า</a>
+  </div>
   {% endif %}
 </div>
 {% if is_admin %}

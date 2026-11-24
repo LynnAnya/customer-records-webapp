@@ -140,3 +140,28 @@ class PublicRegistrationForm(CustomerForm):
 
     def is_bot(self) -> bool:
         return bool(self.cleaned_data.get(self.HONEYPOT_FIELD))
+
+
+MAX_EXCEL_BYTES = 5 * 1024 * 1024
+XLSX_TYPES = ".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+
+
+class ExcelUploadForm(forms.Form):
+    """The admin's Excel upload. The rows themselves are checked by importing.py."""
+
+    file = forms.FileField(
+        label="ไฟล์ Excel (.xlsx)",
+        error_messages={"required": "กรุณาเลือกไฟล์ Excel", "empty": "ไฟล์นี้ว่างเปล่า"},
+        widget=forms.FileInput(attrs={"accept": XLSX_TYPES}),
+    )
+
+    def clean_file(self):
+        upload = self.cleaned_data["file"]
+        if not upload.name.lower().endswith(".xlsx"):
+            raise forms.ValidationError(
+                "กรุณาเลือกไฟล์ Excel นามสกุล .xlsx (ไฟล์ .xls หรือ .csv ให้เปิดใน Excel "
+                "แล้วบันทึกเป็น .xlsx ก่อน)"
+            )
+        if upload.size > MAX_EXCEL_BYTES:
+            raise forms.ValidationError("ไฟล์ใหญ่เกิน 5 MB")
+        return upload

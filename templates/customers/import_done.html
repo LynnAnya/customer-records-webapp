@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+
+{% block title %}นำเข้าจาก Excel แล้ว{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl">
+  <h1 class="text-3xl font-bold leading-snug">{% if created %}นำเข้าแล้ว {{ created }} ราย{% else %}ไม่มีลูกค้าใหม่{% endif %}</h1>
+  <p class="mt-1 text-muted">{{ file_name }}{% if skipped_duplicates %} · ข้ามแถวที่ซ้ำกับลูกค้าเดิมทุกช่อง {{ skipped_duplicates }} แถว{% endif %}</p>
+
+  <div class="card mt-5 p-5 sm:p-7">
+    {% if invalid_account_rows or numeric_account_rows or duplicate_phone_rows %}
+    <p>บันทึกเลขแถวด้านล่างไว้ หน้านี้แสดงครั้งเดียว</p>
+    {% include "customers/import_rows_to_check.html" %}
+    {% else %}
+    <p class="flex items-center gap-2"><span class="text-success">{% include "components/icon.html" with name="check" %}</span>ทุกแถวเรียบร้อย ไม่มีแถวที่ต้องตรวจเพิ่ม</p>
+    {% endif %}
+    <div class="mt-6 flex">
+      <a href="{% url 'customer_list' %}" class="btn btn-primary sm:ml-auto">ไปที่รายชื่อลูกค้า</a>
+    </div>
+  </div>
+</div>
+{% endblock %}

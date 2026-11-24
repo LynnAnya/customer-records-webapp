@@ -43,6 +43,10 @@
   --danger: #c22a2a;
   --danger-soft: #fde6e6;
   --success: #12805c;
+  /* Excel button: Excel's own green, same in both themes (white text 5.3:1). */
+  --excel: #107c41;
+  --excel-strong: #0b5c30;
+  --on-excel: #ffffff;
   color-scheme: light;
 }
 .dark {
@@ -85,6 +89,9 @@
   --color-danger: var(--danger);
   --color-danger-soft: var(--danger-soft);
   --color-success: var(--success);
+  --color-excel: var(--excel);
+  --color-excel-strong: var(--excel-strong);
+  --color-on-excel: var(--on-excel);
   --shadow-card: 0 1px 2px rgb(16 26 58 / 0.06), 0 12px 32px -12px rgb(16 26 58 / 0.22);
 }
 
@@ -119,6 +126,13 @@
   }
   .btn-primary {
     @apply bg-accent text-on-accent hover:bg-accent-strong active:translate-y-px;
+  }
+  .btn-excel {
+    @apply bg-excel text-on-excel hover:bg-excel-strong active:translate-y-px;
+  }
+  /* File picker: the browser's own button, styled like ours. */
+  .file-control {
+    @apply cursor-pointer py-2 file:mr-4 file:cursor-pointer file:rounded-lg file:border-0 file:bg-sunken file:px-4 file:py-2 file:font-semibold file:text-ink;
   }
   .btn-quiet {
     @apply text-ink hover:bg-sunken;

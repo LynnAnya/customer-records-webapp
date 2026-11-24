@@ -9,7 +9,8 @@ MAX_ERRORS_SHOWN = 50
 
 class Command(BaseCommand):
     help = (
-        "Import customers from an .xlsx file (first sheet, headers in row 1). "
+        "Import customers from an .xlsx file (the first sheet with the right "
+        "headers in row 1, or --sheet). "
         "Use --dry-run first: it checks every row and saves nothing."
     )
 
@@ -18,15 +19,20 @@ class Command(BaseCommand):
         parser.add_argument(
             "--dry-run", action="store_true", help="Check the file, save nothing."
         )
+        parser.add_argument("--sheet", help="Sheet (tab) name to read.")
 
     def handle(self, *args, **options) -> None:
         dry_run: bool = options["dry_run"]
         try:
-            result = import_customers(options["path"], dry_run=dry_run)
+            result = import_customers(
+                options["path"], dry_run=dry_run, sheet=options["sheet"]
+            )
         except ImportFileError as error:
             raise CommandError(str(error)) from error
 
         # Row numbers only below: never print phone or account numbers.
+        if len(result.sheet_names) > 1:
+            self.stdout.write(f"Sheet: {result.sheet_name}")
         self.stdout.write(f"Rows read: {result.rows_read}")
         if result.skipped_duplicates:
             self.stdout.write(
@@ -38,6 +44,13 @@ class Command(BaseCommand):
                 self.style.WARNING(
                     "Phone already used by another customer (allowed, please check) "
                     f"in rows: {_rows(result.duplicate_phone_rows)}"
+                )
+            )
+        if result.invalid_account_rows:
+            self.stdout.write(
+                self.style.WARNING(
+                    "Account number is not a number, saved as '-' (please check) "
+                    f"in rows: {_rows(result.invalid_account_rows)}"
                 )
             )
         if result.numeric_account_rows:

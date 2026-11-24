@@ -79,8 +79,11 @@ def test_real_run_writes_one_log_row_with_only_a_count(excel) -> None:
     assert entry.user is None
 
 
+TOO_LONG_PLATE = "ก" * 51  # longer than the column allows: a real error
+
+
 def test_real_run_is_all_or_nothing(excel) -> None:
-    bad = row(name="ปิติ", account="abc")
+    bad = row(name="ปิติ", plate=TOO_LONG_PLATE)
 
     with pytest.raises(CommandError):
         run(excel([SOMCHAI, bad, MALI]))
@@ -105,14 +108,15 @@ def test_a_failure_while_saving_rolls_everything_back(excel, monkeypatch) -> Non
 
 
 def test_errors_name_the_row_and_column_without_the_values(excel) -> None:
-    bad = row(name="ปิติ", account="12ab", phone="08123")
+    bad = row(name="ปิติ", plate=TOO_LONG_PLATE, account="12ab", phone="08123")
     out = StringIO()
 
     with pytest.raises(CommandError) as error:
         call_command("import_customers", str(excel([SOMCHAI, bad])), stdout=out)
 
     output = out.getvalue()
-    assert "แถว 3: หมายเลขบัญชี" in output
+    assert "แถว 3: ทะเบียนรถ" in output
+    assert "saved as '-'" in output and "rows: 3" in output
     assert "Nothing was saved" in str(error.value)
     for secret in ("08123", "12ab", "0811112222", "0001234567"):
         assert secret not in output
@@ -138,6 +142,25 @@ def test_numeric_account_numbers_are_flagged_for_checking(excel) -> None:
     assert "leading 0" in output
     assert "as Text: 2" in output
     assert "1234567" not in output
+
+
+@pytest.mark.parametrize("account", ["ยังไม่มี", "12ab", "1" * 21, "กสิกร 123"])
+def test_an_account_that_is_not_a_number_is_saved_as_a_dash(excel, account) -> None:
+    output = run(excel([SOMCHAI, row(name="ปิติ", account=account)]))
+
+    assert Customer.objects.count() == 2
+    assert Customer.objects.get(name="ปิติ").account_number == "-"
+    assert "saved as '-'" in output and "rows: 3" in output
+    assert account not in output
+
+
+def test_dashes_and_a_lone_dash_in_accounts_are_not_flagged(excel) -> None:
+    rows = [row(account="000-1-23456-7"), row(name="ปิติ", account="-")]
+
+    result = import_customers(excel(rows), dry_run=True)
+
+    assert result.invalid_account_rows == []
+    assert result.created == 2
 
 
 def test_blank_rows_are_skipped(excel) -> None:
@@ -245,6 +268,53 @@ def test_rows_without_a_phone_are_not_flagged_as_duplicates(excel) -> None:
 
     assert Customer.objects.count() == 2
     assert "Phone already used" not in output
+
+
+def test_the_first_sheet_with_the_right_headers_is_used(tmp_path) -> None:
+    workbook = Workbook()
+    workbook.active.title = "สรุป"
+    workbook.active.append(["ยอดรวม", 3])
+    customers = workbook.create_sheet("ลูกค้า")
+    customers.append(HEADERS)
+    customers.append(SOMCHAI)
+    path = tmp_path / "tabs.xlsx"
+    workbook.save(path)
+
+    result = import_customers(path, dry_run=False)
+
+    assert result.sheet_name == "ลูกค้า"
+    assert result.sheet_names == ["สรุป", "ลูกค้า"]
+    assert Customer.objects.count() == 1
+
+
+def test_a_chosen_sheet_without_the_columns_is_a_clear_error(tmp_path) -> None:
+    workbook = Workbook()
+    workbook.active.title = "สรุป"
+    workbook.active.append(["ยอดรวม", 3])
+    path = tmp_path / "tabs.xlsx"
+    workbook.save(path)
+
+    with pytest.raises(ImportFileError) as error:
+        import_customers(path, dry_run=True, sheet="สรุป")
+
+    assert "ไม่มีคอลัมน์" in error.value.thai
+    assert error.value.sheet_names == ["สรุป"]
+
+
+def test_too_many_rows_are_refused(excel, monkeypatch) -> None:
+    monkeypatch.setattr("customers.importing.MAX_ROWS", 2)
+
+    with pytest.raises(ImportFileError) as error:
+        import_customers(excel([SOMCHAI, MALI, row(name="ปิติ")]), dry_run=True)
+
+    assert "เกิน" in error.value.thai
+
+
+def test_the_excel_reader_is_protected_against_malicious_xml() -> None:
+    import openpyxl
+
+    # openpyxl only guards against XML bombs when defusedxml is installed.
+    assert openpyxl.DEFUSEDXML is True
 
 
 def test_extra_columns_are_ignored(excel) -> None:

@@ -1,10 +1,15 @@
 """Read customers from an Excel file and save them. Used by `import_customers`.
 
+Used by the `import_customers` command and by the admin's Excel upload page.
+
 Every row goes through `ImportCustomerForm`: the same rules as the app forms,
-except that empty cells are allowed and saved as "-". Nothing here prints or
-returns a phone or account number: problems are reported by row and column.
+except that empty cells are allowed and saved as "-", and an account number
+that is not a number is saved as "-" and listed for checking. Nothing here
+prints or returns a phone or account number: problems are reported by row and
+column.
 """
 
+import re
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -62,10 +67,23 @@ FIELD_LABELS = {
 # cars (decided by the user, 2026-11-22). Referral is left out on purpose: it
 # is not in the client's file and an admin may change it later.
 MATCH_FIELDS = ("name", "license_plate", "phone", "bank_name", "account_number")
+# A bigger file is refused: the client's whole list is a few hundred rows.
+MAX_ROWS = 5000
+# The same rule as the forms: digits only after removing spaces and dashes.
+ACCOUNT_DIGITS = re.compile(r"\d{1,20}")
 
 
 class ImportFileError(Exception):
-    """The file cannot be used at all (missing, wrong type, wrong headers)."""
+    """The file cannot be used at all (missing, wrong type, wrong headers).
+
+    `str(error)` is English for the terminal command; `thai` is shown on the
+    upload page. `sheet_names` lets the page offer another sheet.
+    """
+
+    def __init__(self, message: str, thai: str, sheet_names: list[str] | None = None):
+        super().__init__(message)
+        self.thai = thai
+        self.sheet_names = sheet_names or []
 
 
 @dataclass
@@ -75,6 +93,9 @@ class ImportResult:
     skipped_duplicates: int = 0
     duplicate_phone_rows: list[int] = field(default_factory=list)
     numeric_account_rows: list[int] = field(default_factory=list)
+    invalid_account_rows: list[int] = field(default_factory=list)
+    sheet_name: str = ""
+    sheet_names: list[str] = field(default_factory=list)
     errors: list[str] = field(default_factory=list)
     dry_run: bool = True
 
@@ -105,47 +126,109 @@ def _phone_text(value: object) -> str:
     return text
 
 
-def _read_rows(path: Path) -> tuple[list[str], list[tuple[int, dict[str, object]]]]:
-    """Return the mapped columns and (Excel row number, raw values) pairs."""
+def _columns(header_row: tuple) -> list[str]:
+    return [HEADER_ALIASES.get(_header_key(cell), "") for cell in header_row]
+
+
+def _missing(columns: list[str]) -> list[str]:
+    found = {name for name in columns if name}
+    return [FIELD_LABELS[name] for name in REQUIRED_FIELDS if name not in found]
+
+
+@dataclass
+class _Sheet:
+    name: str
+    names: list[str]
+    rows: list[tuple[int, dict[str, object]]]
+
+
+def _read_rows(path: Path, sheet: str | None = None) -> _Sheet:
+    """Read the chosen sheet, or else the first sheet that has every column.
+
+    Returns (Excel row number, raw values) for every row that is not blank.
+    """
     if not path.is_file():
-        raise ImportFileError(f"File not found: {path}")
+        raise ImportFileError(f"File not found: {path}", "ไม่พบไฟล์ กรุณาอัปโหลดใหม่")
     if path.suffix.lower() != ".xlsx":
-        raise ImportFileError("The file must be an .xlsx Excel file.")
+        raise ImportFileError(
+            "The file must be an .xlsx Excel file.",
+            "ไฟล์ต้องเป็น Excel นามสกุล .xlsx",
+        )
     try:
         workbook = load_workbook(path, read_only=True, data_only=True)
     except Exception as error:  # openpyxl raises several unrelated types
-        raise ImportFileError("The file could not be opened as Excel.") from error
+        raise ImportFileError(
+            "The file could not be opened as Excel.",
+            "เปิดไฟล์นี้เป็น Excel ไม่ได้ กรุณาบันทึกเป็น .xlsx จาก Excel แล้วลองใหม่",
+        ) from error
 
+    names = list(workbook.sheetnames)
     rows = None
     try:
-        rows = workbook.worksheets[0].iter_rows(values_only=True)
-        header_row = next(rows, None)
-        if header_row is None:
-            raise ImportFileError("The first sheet is empty.")
-
-        columns = [HEADER_ALIASES.get(_header_key(cell), "") for cell in header_row]
-        found = {name for name in columns if name}
-        missing = [FIELD_LABELS[name] for name in REQUIRED_FIELDS if name not in found]
-        if missing:
-            seen = ", ".join(str(cell) for cell in header_row if cell) or "(none)"
+        if sheet is not None and sheet not in names:
             raise ImportFileError(
-                f"Missing columns: {', '.join(missing)}. Headers found: {seen}"
+                f"No sheet named {sheet!r}.", "ไม่พบแท็บที่เลือกในไฟล์นี้", names
             )
-
-        data: list[tuple[int, dict[str, object]]] = []
-        for row_number, row in enumerate(rows, start=2):
-            # Rows can be shorter than the header row; missing cells are blank.
-            cells = zip(columns, row, strict=False)
-            values = {name: cell for name, cell in cells if name}
-            if any(_cell_text(cell) for cell in values.values()):
-                data.append((row_number, values))
-        return sorted(found), data
+        candidates = [sheet] if sheet is not None else names
+        first_problem: ImportFileError | None = None
+        for name in candidates:
+            rows = workbook[name].iter_rows(values_only=True)
+            header_row = next(rows, None)
+            columns = _columns(header_row or ())
+            missing = _missing(columns)
+            if not missing:
+                return _Sheet(name, names, _data_rows(columns, rows))
+            if first_problem is None:
+                first_problem = _missing_columns_error(name, header_row, missing, names)
+            rows.close()
+            rows = None
+        raise first_problem or ImportFileError(
+            "The file has no sheets.", "ไฟล์นี้ไม่มีแท็บข้อมูล", names
+        )
     finally:
         # A half-read sheet (stopped by an error) holds part of the file open,
         # and closing the workbook alone does not release it. Close it first.
         if rows is not None:
             rows.close()
         workbook.close()
+
+
+def _missing_columns_error(
+    name: str, header_row: tuple | None, missing: list[str], names: list[str]
+) -> ImportFileError:
+    if not header_row or not any(header_row):
+        return ImportFileError(
+            f"The sheet {name!r} is empty.", f"แท็บ “{name}” ไม่มีข้อมูล", names
+        )
+    seen = ", ".join(str(cell) for cell in header_row if cell) or "(none)"
+    where = "" if len(names) == 1 else f" (sheet {name!r})"
+    return ImportFileError(
+        f"Missing columns{where}: {', '.join(missing)}. Headers found: {seen}",
+        f"แท็บ “{name}” ไม่มีคอลัมน์: {', '.join(missing)} (หัวคอลัมน์ในแถวแรกคือ: {seen})",
+        names,
+    )
+
+
+def _data_rows(columns: list[str], rows) -> list[tuple[int, dict[str, object]]]:
+    data: list[tuple[int, dict[str, object]]] = []
+    for row_number, row in enumerate(rows, start=2):
+        # Rows can be shorter than the header row; missing cells are blank.
+        cells = zip(columns, row, strict=False)
+        values = {name: cell for name, cell in cells if name}
+        if any(_cell_text(cell) for cell in values.values()):
+            data.append((row_number, values))
+            if len(data) > MAX_ROWS:
+                raise ImportFileError(
+                    f"More than {MAX_ROWS} rows. Split the file.",
+                    f"ไฟล์มีข้อมูลเกิน {MAX_ROWS:,} แถว กรุณาแบ่งเป็นหลายไฟล์",
+                )
+    return data
+
+
+def _account_is_valid(text: str) -> bool:
+    """Empty, "-" or digits once spaces and dashes are removed (as the form)."""
+    digits = re.sub(r"[\s-]", "", text)
+    return not digits or bool(ACCOUNT_DIGITS.fullmatch(digits))
 
 
 def _form_data(values: dict[str, object]) -> dict[str, str]:
@@ -155,14 +238,29 @@ def _form_data(values: dict[str, object]) -> dict[str, str]:
     return data
 
 
-def import_customers(path: Path, *, dry_run: bool) -> ImportResult:
+def import_customers(
+    path: Path,
+    *,
+    dry_run: bool,
+    sheet: str | None = None,
+    user=None,
+    ip_address: str | None = None,
+) -> ImportResult:
     """Validate every row, then save all of them or none.
 
     `dry_run=True` checks everything and writes nothing. A real run is one
     transaction: any invalid row stops the import with nothing saved.
+    `sheet=None` uses the first sheet that has every required column.
+    `user` is the admin who uploaded the file (None for the terminal command).
     """
-    _columns, rows = _read_rows(path)
-    result = ImportResult(rows_read=len(rows), dry_run=dry_run)
+    read = _read_rows(path, sheet)
+    rows = read.rows
+    result = ImportResult(
+        rows_read=len(rows),
+        dry_run=dry_run,
+        sheet_name=read.name,
+        sheet_names=read.names,
+    )
 
     existing_phones = set(Customer.objects.values_list("phone", flat=True))
     seen_rows = set(Customer.objects.values_list(*MATCH_FIELDS))
@@ -172,7 +270,13 @@ def import_customers(path: Path, *, dry_run: bool) -> ImportResult:
     for row_number, values in rows:
         if isinstance(values.get("account_number"), int | float):
             result.numeric_account_rows.append(row_number)
-        form = ImportCustomerForm(_form_data(values))
+        data = _form_data(values)
+        if not _account_is_valid(data.get("account_number", "")):
+            # Letters or a note: the row is still imported, with "-" (decided
+            # by the user, 2026-11-24), and listed so the admin can call.
+            data["account_number"] = ""
+            result.invalid_account_rows.append(row_number)
+        form = ImportCustomerForm(data)
         if not form.is_valid():
             for field_name, messages in form.errors.items():
                 label = FIELD_LABELS.get(field_name, field_name)
@@ -205,7 +309,9 @@ def import_customers(path: Path, *, dry_run: bool) -> ImportResult:
             customer.save()
         log_action(
             ActivityLog.Action.EXCEL_IMPORT,
-            username="import_customers",
+            user=user,
+            username="" if user else "import_customers",
             details={"count": len(forms)},
+            ip_address=ip_address,
         )
     return result

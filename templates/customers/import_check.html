@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+
+{% block title %}ตรวจสอบไฟล์ Excel{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl">
+  <h1 class="text-3xl font-bold leading-snug">ตรวจสอบไฟล์ Excel</h1>
+  <p class="mt-1 text-muted">{{ file_name }} · ยังไม่ได้บันทึกข้อมูล</p>
+
+  {% if sheet_names|length > 1 %}
+  {# Several tabs: the admin may pick another one. Works without JavaScript too. #}
+  <form method="get" action="{% url 'customer_import_check' %}" class="card mt-5 flex flex-col gap-3 p-5 sm:flex-row sm:items-end">
+    <div class="field mb-0 grow">
+      <label for="sheet">แท็บที่ใช้</label>
+      <select id="sheet" name="sheet" class="control" @change="$el.form.submit()">
+        {% for name in sheet_names %}<option value="{{ name }}"{% if name == sheet %} selected{% endif %}>{{ name }}</option>{% endfor %}
+      </select>
+    </div>
+    <button type="submit" class="btn btn-outline">ใช้แท็บนี้</button>
+  </form>
+  {% endif %}
+
+  {% if file_error %}
+  <div class="alert mt-5" role="alert">{{ file_error }}</div>
+  <div class="mt-5 flex flex-col-reverse gap-3 sm:flex-row sm:items-center">
+    <a href="{% url 'customer_list' %}" class="btn btn-outline">ยกเลิก</a>
+    <a href="{% url 'customer_import' %}" class="btn btn-excel sm:ml-auto">อัปโหลดไฟล์ใหม่</a>
+  </div>
+  {% else %}
+
+  <div class="card mt-5 p-5 sm:p-7">
+    <dl class="grid gap-4 sm:grid-cols-3">
+      <div><dt class="text-muted">แถวที่มีข้อมูล</dt><dd class="text-2xl font-bold tabular-nums">{{ result.rows_read }}</dd></div>
+      <div><dt class="text-muted">จะเพิ่มเป็นลูกค้าใหม่</dt><dd class="text-2xl font-bold tabular-nums text-success">{{ result.created }}</dd></div>
+      <div><dt class="text-muted">ซ้ำกับลูกค้าเดิมทุกช่อง (ข้าม)</dt><dd class="text-2xl font-bold tabular-nums">{{ result.skipped_duplicates }}</dd></div>
+    </dl>
+
+    {% include "customers/import_rows_to_check.html" with invalid_account_rows=result.invalid_account_rows numeric_account_rows=result.numeric_account_rows duplicate_phone_rows=result.duplicate_phone_rows %}
+
+    {% if errors_shown %}
+    <div class="alert mt-5" role="alert">
+      <p class="font-semibold">พบปัญหา {{ result.errors|length }} จุด ต้องแก้ในไฟล์ก่อน จึงจะนำเข้าได้ (ยังไม่มีข้อมูลใดถูกบันทึก)</p>
+      <ul class="mt-2 list-disc space-y-1 pl-5">
+        {% for line in errors_shown %}<li>{{ line }}</li>{% endfor %}
+        {% if errors_hidden %}<li>และอีก {{ errors_hidden }} จุด</li>{% endif %}
+      </ul>
+    </div>
+    {% endif %}
+
+    <div class="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:items-center">
+      <a href="{% url 'customer_list' %}" class="btn btn-outline">ยกเลิก</a>
+      {% if not result.ok %}
+      <a href="{% url 'customer_import' %}" class="btn btn-excel sm:ml-auto">อัปโหลดไฟล์ที่แก้แล้ว</a>
+      {% elif result.created %}
+      <form method="post" action="{% url 'customer_import_confirm' %}" class="sm:ml-auto">
+        {% csrf_token %}
+        <input type="hidden" name="sheet" value="{{ sheet }}">
+        <button type="submit" class="btn btn-excel w-full sm:min-w-48">{% include "components/icon.html" with name="check" %}ยืนยันนำเข้า {{ result.created }} ราย</button>
+      </form>
+      {% else %}
+      <p class="text-muted sm:ml-auto">ไม่มีลูกค้าใหม่ในไฟล์นี้ ทุกแถวมีอยู่ในระบบแล้ว</p>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

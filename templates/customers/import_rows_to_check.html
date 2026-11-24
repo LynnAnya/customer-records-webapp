@@ -1,0 +1,14 @@
+{# Rows the admin should look at. Row numbers only, never the values. Used on the check and result pages. #}
+{% if invalid_account_rows or numeric_account_rows or duplicate_phone_rows %}
+<div class="notice-warning mt-5" role="note">
+  <span class="mt-0.5 text-signal">{% include "components/icon.html" with name="alert" %}</span>
+  <div>
+    <p class="font-semibold">ตรวจสอบแถวเหล่านี้ใน Excel (แถวตามเลขแถวของ Excel)</p>
+    <ul class="mt-1 space-y-1">
+      {% if invalid_account_rows %}<li>เลขที่บัญชีไม่ใช่ตัวเลข บันทึกเป็น “-” ให้ติดต่อลูกค้าแล้วแก้ไขภายหลัง: แถว {{ invalid_account_rows|join:", " }}</li>{% endif %}
+      {% if numeric_account_rows %}<li>เลขที่บัญชีถูกเก็บเป็นตัวเลขใน Excel เลข 0 ข้างหน้าอาจหายไป: แถว {{ numeric_account_rows|join:", " }}</li>{% endif %}
+      {% if duplicate_phone_rows %}<li>เบอร์โทรซ้ำกับลูกค้ารายอื่น (เพิ่มได้ตามปกติ): แถว {{ duplicate_phone_rows|join:", " }}</li>{% endif %}
+    </ul>
+  </div>
+</div>
+{% endif %}

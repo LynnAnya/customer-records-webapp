@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+
+{% block title %}เพิ่มลูกค้าจาก Excel{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl">
+  <h1 class="text-3xl font-bold leading-snug">เพิ่มลูกค้าจาก Excel</h1>
+  <p class="mt-1 text-muted">เพิ่มลูกค้าหลายรายพร้อมกัน ระบบจะตรวจไฟล์ให้ดูก่อน ยังไม่บันทึกจนกว่าจะกดยืนยัน</p>
+
+  <form method="post" enctype="multipart/form-data" novalidate class="card mt-5 p-5 sm:p-7">
+    {% csrf_token %}
+    <div class="field">
+      <label for="{{ form.file.id_for_label }}">{{ form.file.label }}</label>
+      <input type="file" name="{{ form.file.html_name }}" id="{{ form.file.id_for_label }}" accept="{{ form.file.field.widget.attrs.accept }}" class="control file-control" {% if form.file.errors %}aria-invalid="true" aria-describedby="file-error"{% endif %}>
+      {% for error in form.file.errors %}<p id="file-error" class="field-error">{{ error }}</p>{% endfor %}
+    </div>
+
+    <div class="rounded-xl border border-line bg-sunken px-4 py-3 text-base">
+      <p class="font-semibold">รูปแบบไฟล์</p>
+      <ul class="mt-1 list-disc space-y-1 pl-5 text-muted">
+        <li>แถวแรกเป็นหัวคอลัมน์: ทะเบียนรถ, ชื่อ, หมายเลขบัญชี, ธนาคาร, เบอร์โทร (ผู้แนะนำ ใส่หรือไม่ใส่ก็ได้)</li>
+        <li>ช่องที่ว่างจะบันทึกเป็น “-” เลขที่บัญชีที่ไม่ใช่ตัวเลขก็บันทึกเป็น “-” และระบบจะแจ้งแถวให้ตรวจ</li>
+        <li>แถวที่ซ้ำกับลูกค้าเดิมทุกช่อง (ชื่อ ทะเบียน เบอร์ ธนาคาร เลขบัญชี) จะถูกข้าม คนเดียวกันที่มีรถหลายคันเพิ่มได้ตามปกติ</li>
+        <li>ถ้าไฟล์มีหลายแท็บ ระบบเลือกแท็บแรกที่มีหัวคอลัมน์ครบ และเปลี่ยนแท็บได้ในหน้าตรวจ</li>
+      </ul>
+      <a href="{% url 'customer_import_template' %}" class="mt-3 inline-flex items-center gap-2 font-semibold text-accent-strong hover:underline">{% include "components/icon.html" with name="file-down" %}ดาวน์โหลดไฟล์ตัวอย่าง</a>
+    </div>
+
+    <div class="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:items-center">
+      <a href="{% url 'customer_list' %}" class="btn btn-outline">ยกเลิก</a>
+      <button type="submit" class="btn btn-excel sm:ml-auto sm:min-w-40">{% include "components/icon.html" with name="file-spreadsheet" %}ตรวจสอบไฟล์</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

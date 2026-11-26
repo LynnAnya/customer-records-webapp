@@ -1,0 +1,68 @@
+# Runs the same checks as the laptop on every push and pull request:
+# lint, formatting, Django checks, missing migrations, and all tests against
+# a fresh Postgres 18 (the same major version as Neon).
+# Only fake test settings are used here: no secrets, no real data.
+
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read # read the code, nothing else
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true # a newer push to the same branch replaces an older run
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: customer_records
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      # Test-only values. The real ones live in .env (laptop) and Render.
+      DEBUG: "True"
+      SECRET_KEY: ci-only-not-a-real-secret-key-0123456789-abcdefghijklmnop
+      ALLOWED_HOSTS: localhost,127.0.0.1
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/customer_records
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: astral-sh/setup-uv@v10
+        with:
+          enable-cache: true
+
+      - name: Install Python and packages (exact versions from uv.lock)
+        run: uv sync --locked
+
+      - name: Lint
+        run: uv run ruff check .
+
+      - name: Formatting
+        run: uv run ruff format --check .
+
+      - name: Django checks
+        run: |
+          uv run python manage.py check
+          uv run python manage.py makemigrations --check --dry-run
+
+      - name: Tests
+        run: uv run pytest
